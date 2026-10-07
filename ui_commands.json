@@ -1,0 +1,398 @@
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "LED"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "DHT11 Sensor"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "LED"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "DHT11 Sensor"}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Buzzer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Motor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "LED"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "LED"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "LED"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Motor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Motor"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Motor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Motor"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.moveComponent", "params": {"componentId": "ESP32", "position": {"x": 300, "y": 300}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.removeComponent", "params": {"componentId": "Relay Module"}}
+{"method": "canvas.getState", "params": {}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Xyz9999Foobar", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Buzzer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Motor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.moveComponent", "params": {"componentId": "ESP32", "position": {"x": 300, "y": 300}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.removeComponent", "params": {"componentId": "Relay Module"}}
+{"method": "canvas.getState", "params": {}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Xyz9999Foobar", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.moveComponent", "params": {"componentId": "ESP32", "position": {"x": 300, "y": 300}}}
+{"method": "canvas.removeComponent", "params": {"componentId": "ESP32"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Buzzer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Motor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "Usb 32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Temperature Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "I2C", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 1000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 1200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 1400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 1600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 1800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 2000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 2200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 2400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 2600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 2800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 3000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 3200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 3400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 3600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 3800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 4000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 4200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 4400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 4600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 4800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 5000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 5200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 5400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 5600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 5800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 6000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 6200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 6400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 6600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 6800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 7000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 7200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 7400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 7600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 7800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 8000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 1000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 1200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 1400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 1600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 1800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 2000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 2200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 2400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 2600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 2800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 3000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 3200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 3400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 3600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 3800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 4000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 4200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 4400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 4600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 4800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 5000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 5200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 5400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 5600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 5800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 6000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 6200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 6400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 6600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 6800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 7000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 7200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 7400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 7600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 7800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 8000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 8200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 8400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 8600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 8800, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 9000, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "SPI Sensor"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "SPI Sensor"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "SPI", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "The Th11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "The Th11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Buzzer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Motor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Accelerometer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Accelerometer"}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Gyroscope", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.getState", "params": {}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Buzzer", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Motor", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "DHT11 Sensor", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "LED", "position": {"x": 600, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "Relay Module", "position": {"x": 400, "y": 200}}}
+{"method": "canvas.moveComponent", "params": {"componentId": "ESP32", "position": {"x": 300, "y": 300}}}
+{"method": "canvas.connectComponents", "params": {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module"}}
+{"method": "canvas.addComponent", "params": {"componentId": "Xyz9999Foobar", "position": {"x": 200, "y": 200}}}
+{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}

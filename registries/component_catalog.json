@@ -1,0 +1,60 @@
+{
+  "components": [
+    {
+      "id": "esp32",
+      "name": "ESP32",
+      "category": "Microcontroller",
+      "description": "ESP32 Wi-Fi and Bluetooth microcontroller",
+      "tags": ["wifi", "bluetooth", "mcu"]
+    },
+    {
+      "id": "stm32",
+      "name": "STM32",
+      "category": "Microcontroller",
+      "description": "STM32 ARM Cortex MCU",
+      "tags": ["mcu"]
+    },
+    {
+      "id": "temperature_sensor",
+      "name": "Temperature Sensor",
+      "category": "Sensor",
+      "description": "Temperature sensing module",
+      "tags": ["sensor"]
+    },
+    {
+      "id": "relay_module",
+      "name": "Relay Module",
+      "category": "Actuator",
+      "description": "Relay switch module",
+      "tags": ["relay"]
+    },
+    {
+      "id": "wifi_module",
+      "name": "WiFi Module",
+      "category": "Communication",
+      "description": "Wireless communication module",
+      "tags": ["wifi"]
+    },
+    {
+      "id": "dht11_sensor",
+      "name": "DHT11 Sensor",
+      "category": "Sensor",
+      "description": "DHT11 temperature and humidity sensor",
+      "tags": ["sensor", "temperature", "humidity"]
+    },
+    {
+      "id": "led",
+      "name": "LED",
+      "category": "Actuator",
+      "description": "Light-emitting diode output",
+      "tags": ["led", "output"]
+    },
+    {
+      "id": "accelerometer",
+      "name": "Accelerometer",
+      "category": "Sensor",
+      "description": "Motion/orientation sensing module",
+      "tags": ["sensor", "motion"]
+    }
+  ]
+}

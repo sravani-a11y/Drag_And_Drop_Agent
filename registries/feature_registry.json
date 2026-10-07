@@ -1,0 +1,16 @@
+{
+    "features": [
+        {
+            "name": "Drag Component"
+        },
+        {
+            "name": "Delete Component"
+        },
+        {
+            "name": "Move Component"
+        },
+        {
+            "name": "Connect Components"
+        }
+    ]
+}
