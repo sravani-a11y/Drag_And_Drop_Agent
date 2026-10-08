@@ -1,14 +1,17 @@
 """Optional voice input, for both the CLI and the FastAPI /api/agent/voice endpoint.
 
-Speech-to-text is provided by openai/whisper-large-v3-turbo (via
-transformers), loaded once per process and reused - not once per request.
-Two entry points, sharing one transcription implementation:
+Speech-to-text is provided by Groq's hosted Whisper API
+(whisper-large-v3-turbo - the same Whisper model this module previously
+ran locally), so the server needs no PyTorch/transformers and no multi-GB
+model in memory. The API key is read from the GROQ_API_KEY environment
+variable; it is never hard-coded or logged. Two entry points, sharing one
+transcription implementation:
 
     - get_voice_input(): CLI only. Captures live audio from a local
       microphone via speech_recognition's Microphone - used here purely
       for audio *capture*, not recognition - then transcribes it the same
       way transcribe_audio_bytes() does. Falls back to a plain `input()`
-      prompt on any failure (package/model unavailable, no microphone,
+      prompt on any failure (package unavailable, no microphone,
       transcription failure), so main.py never needs to know which one
       actually happened.
     - transcribe_audio_bytes(): server-safe. Transcribes an already-recorded
@@ -17,233 +20,143 @@ Two entry points, sharing one transcription implementation:
       server process; api/server.py turns None into a clean HTTP error
       response instead.
 
-Nothing here is imported unless one of these functions is actually called,
-so a normal text-only run never needs torch/transformers/soundfile
-installed, and the (multi-GB) model is only downloaded/loaded the first
-time transcription is actually attempted, not at import time.
-
 No component-name correction of any kind happens in this module - that is
 command_normalizer.py's job, after this. This module's only responsibility
 is producing the most accurate *raw* transcript it can.
 """
 
-import io
 import logging
+import os
+import re
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-_WHISPER_MODEL_ID = "openai/whisper-large-v3-turbo"
-_TARGET_SAMPLE_RATE = 16000
+_GROQ_TRANSCRIPTION_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
+_GROQ_API_KEY_ENV = "GROQ_API_KEY"
+_WHISPER_MODEL_ID = "whisper-large-v3-turbo"
+_REQUEST_TIMEOUT_SECONDS = 30
 
 # Explicit - this deployment only ever expects English commands ("add
 # ESP32", "connect X to Y"). Whisper otherwise auto-detects language per
 # clip, which is one less source of variance to worry about for a
 # single-language product.
-_LANGUAGE = "english"
+_LANGUAGE = "en"
+
+# Groq's upload limit for audio files.
+_MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 # Audio shorter than this almost never contains a real command - Whisper
-# tends to hallucinate plausible-sounding filler ("Thank you.", "Add yes
-# and don't do it.") when asked to transcribe something too short/quiet to
-# actually contain speech. Rejecting it here means one fewer thing
-# command_normalizer.py has to reject after the fact.
+# tends to hallucinate plausible-sounding filler when asked to transcribe
+# something too short to actually contain speech.
 _MIN_DURATION_SECONDS = 0.3
 
-# RMS energy below this is treated as near-silent. Deliberately low: a
-# true digital-silence clip measures exactly 0.0, while even a
-# deliberately very-quiet real recording (measured at 5% synthesized
-# volume) still measures ~0.003 - this sits well below that, so it only
-# ever catches genuinely empty/silent audio, not just quiet speech.
-_MIN_RMS_ENERGY = 0.001
+# What Whisper reliably "hears" in silent or near-silent audio (measured:
+# a silent clip comes back as "Thank you." with no_speech_prob 0, so the
+# API's own scores can't flag it). None of these is a canvas command, so a
+# transcript that is exactly one of them is treated as no speech.
+_SILENCE_HALLUCINATIONS = frozenset({"thank you", "thanks for watching", "thank you for watching", "you", "bye"})
 
-# Peak amplitude every accepted clip is normalized to before Whisper sees
-# it, so a quiet recording is treated the same as a loud one. Deliberately
-# not 1.0, to leave a little headroom.
-_TARGET_PEAK_AMPLITUDE = 0.95
-
-# Leading/trailing silence trimming: a real microphone recording almost
-# always has a beat of silence (or room noise) before the speaker starts
-# and after they finish - a synthesized test clip typically doesn't. That
-# silence contributes nothing useful, dilutes the peak-normalization step
-# below (the true speech content ends up quieter than it should be
-# relative to the padding), and is a well-documented trigger for Whisper
-# hallucinating content to "explain" audio that doesn't contain speech.
-# Frames are 20ms; a frame counts as speech once its RMS is at least this
-# fraction of the clip's own loudest frame (relative, not absolute, so it
-# adapts to how loud/quiet the recording is) - only leading/trailing
-# silence is trimmed, never a pause in the middle of a real command.
-_SILENCE_TRIM_FRAME_MS = 20
-_SILENCE_TRIM_RELATIVE_THRESHOLD = 0.08
-_SILENCE_TRIM_PADDING_SECONDS = 0.15
-
-_pipeline = None  # lazily built, cached module-level singleton - see _get_pipeline()
+# Groq picks the decoder from the file extension, but the endpoint only
+# receives raw bytes - so the format is recognised from its first bytes.
+# Covers what browsers record: WebM (Chrome/Edge), OGG (Firefox), MP4
+# (Safari), plus WAV/FLAC/MP3.
+_FORMAT_SIGNATURES = (
+    (b"\x1a\x45\xdf\xa3", "webm"),
+    (b"OggS", "ogg"),
+    (b"RIFF", "wav"),
+    (b"fLaC", "flac"),
+    (b"ID3", "mp3"),
+)
 
 
-def _get_pipeline():
-    """Build (once) and return the cached Whisper ASR pipeline.
+def _guess_extension(audio_bytes: bytes) -> str:
+    """Return the file extension Groq needs for `audio_bytes`, from its magic bytes."""
+    for signature, extension in _FORMAT_SIGNATURES:
+        if audio_bytes.startswith(signature):
+            return extension
+    if audio_bytes[4:8] == b"ftyp":
+        return "mp4"
+    if audio_bytes[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2"):
+        return "mp3"
+    # Unknown header: let Groq try it as WebM (the browser default) and
+    # report its own error if it can't decode it.
+    return "webm"
 
-    Loading openai/whisper-large-v3-turbo is expensive (a multi-GB
-    download the first time this runs, then several seconds to load into
-    memory) - this must happen once per process, not once per request.
+
+def _is_silence_hallucination(text: str) -> bool:
+    """True if `text` has no letters at all, or is one of Whisper's known silence phrases."""
+    words = re.sub(r"[^a-z ]", "", text.lower()).strip()
+    return not words or words in _SILENCE_HALLUCINATIONS
+
+
+def _transcribe_with_groq(audio_bytes: bytes) -> Optional[str]:
+    """Send `audio_bytes` to Groq's Whisper API and return the raw transcript, or None on failure.
+
+    Deterministic, prompt-free decoding (temperature 0, no prompt), the same
+    settings the local pipeline used: priming Whisper with the component
+    vocabulary previously made it repeat that vocabulary in a loop under
+    noise, so no prompt is sent.
     """
-    global _pipeline
-    if _pipeline is not None:
-        return _pipeline
-
-    import torch
-    from transformers import pipeline as hf_pipeline
-
-    logger.info("Loading %s (first use only - this can take a while)...", _WHISPER_MODEL_ID)
-    _pipeline = hf_pipeline(
-        "automatic-speech-recognition",
-        model=_WHISPER_MODEL_ID,
-        dtype=torch.float32,
-        device="cpu",
-    )
-    logger.info("%s loaded", _WHISPER_MODEL_ID)
-    return _pipeline
-
-
-class _InvalidAudio(Exception):
-    """Raised by _decode_and_prepare() for empty/too-short/near-silent audio - never sent to Whisper."""
-
-
-def _trim_silence(data, sample_rate: int):
-    """Trim leading/trailing near-silence from `data`, keeping a small margin either side.
-
-    General signal-processing on whatever samples are present - nothing
-    here depends on what's actually being said, so it applies identically
-    to any command. A pause in the *middle* of real speech is never
-    touched, only the lead-in/trail-off outside the first and last active
-    frame. Returns `data` unchanged if it's too short to frame, or if no
-    frame ever clears the (relative) activity threshold.
-    """
-    import numpy as np
-
-    frame_length = max(1, int(sample_rate * _SILENCE_TRIM_FRAME_MS / 1000))
-    num_frames = len(data) // frame_length
-    if num_frames < 2:
-        return data
-
-    frames = data[: num_frames * frame_length].reshape(num_frames, frame_length)
-    frame_rms = np.sqrt(np.mean(np.square(frames), axis=1))
-
-    peak_rms = float(frame_rms.max())
-    if peak_rms <= 0:
-        return data
-
-    active = np.flatnonzero(frame_rms >= (peak_rms * _SILENCE_TRIM_RELATIVE_THRESHOLD))
-    if active.size == 0:
-        return data
-
-    padding_frames = max(1, int(_SILENCE_TRIM_PADDING_SECONDS * sample_rate / frame_length))
-    start = max(0, (active[0] - padding_frames) * frame_length)
-    end = min(len(data), (active[-1] + 1 + padding_frames) * frame_length)
-
-    return data[start:end]
-
-
-def _decode_and_prepare(audio_bytes: bytes):
-    """Decode `audio_bytes`, validate it, and prepare it for Whisper: mono, 16kHz, float32, trimmed, peak-normalized.
-
-    Raises _InvalidAudio for anything too short or too quiet to plausibly
-    contain speech, and for anything soundfile/torchaudio can't decode at
-    all - callers are expected to catch both and treat them the same way
-    (never send it to Whisper). Logs the diagnostic line requested for
-    debugging audio-quality-vs-decoding issues; never logs the audio data
-    itself, only scalar measurements of it.
-    """
-    import numpy as np
-    import soundfile as sf
-    import torch
-    import torchaudio
-
-    data, sample_rate = sf.read(io.BytesIO(audio_bytes), dtype="float32", always_2d=False)
-    channels = 1 if data.ndim == 1 else data.shape[1]
-    duration = (len(data) / sample_rate) if sample_rate else 0.0
-    energy = float(np.sqrt(np.mean(np.square(data)))) if data.size else 0.0
-
-    logger.info(
-        "STT DEBUG:\nduration=%.2fs\nsample_rate=%d\nchannels=%d\naudio_energy=%.5f",
-        duration,
-        sample_rate,
-        channels,
-        energy,
-    )
-
-    if data.size == 0 or duration < _MIN_DURATION_SECONDS:
-        raise _InvalidAudio(f"audio too short ({duration:.2f}s < {_MIN_DURATION_SECONDS}s minimum)")
-    if energy < _MIN_RMS_ENERGY:
-        raise _InvalidAudio(f"audio is near-silent (energy={energy:.5f} < {_MIN_RMS_ENERGY} minimum)")
-
-    if data.ndim > 1:
-        data = data.mean(axis=1)  # downmix to mono
-
-    if sample_rate != _TARGET_SAMPLE_RATE:
-        tensor = torch.from_numpy(data).unsqueeze(0)
-        tensor = torchaudio.functional.resample(tensor, sample_rate, _TARGET_SAMPLE_RATE)
-        data = tensor.squeeze(0).numpy()
-
-    data = _trim_silence(data, _TARGET_SAMPLE_RATE)
-    if len(data) / _TARGET_SAMPLE_RATE < _MIN_DURATION_SECONDS:
-        # Trimming ate almost the whole clip - the untrimmed version passed
-        # the earlier whole-clip energy check only because of a brief loud
-        # moment (a click, a cough) surrounded by silence, not real speech.
-        raise _InvalidAudio("no sustained speech-like audio found after trimming silence")
-
-    peak = float(np.max(np.abs(data))) if data.size else 0.0
-    if peak > 0:
-        data = data * (_TARGET_PEAK_AMPLITUDE / peak)
-
-    return data
-
-
-def _transcribe_array(audio_array) -> Optional[str]:
-    """Run the Whisper pipeline over an already-decoded, 16kHz mono float32 array.
-
-    Deterministic, prompt-free decoding:
-      - No initial_prompt/prompt_ids. A prior version of this module
-        primed Whisper with the full component vocabulary (ESP32, STM32,
-        DHT11, SPI, ...) as context - testing showed this made no
-        measurable difference on clean audio, but under even mild noise it
-        biased the model into repeating that vocabulary in a loop (e.g.
-        "STM32, STM33, STM33, STM33, ..." dozens of times). Removing it
-        entirely eliminated that failure mode in the same test conditions.
-      - do_sample=False: greedy decoding (this was already the default,
-        since temperature/sampling are only used when do_sample=True - this
-        just makes that deterministic behavior explicit rather than
-        implicit).
-      - no_repeat_ngram_size=3: a standard, model-agnostic decoding
-        constraint (not specific to "long-form" Whisper chunking, unlike
-        no_speech_threshold/compression_ratio_threshold/logprob_threshold/
-        condition_on_prev_tokens - the transformers docs describe all four
-        of those as "only relevant for long-form transcription", and this
-        module never chunks audio, so none of them would do anything here).
-        Blocks any 3-token sequence from being generated twice in the same
-        output, which directly targets repetition-loop hallucination
-        regardless of what triggers it.
-    Returns the raw transcript exactly as Whisper produced it - no
-    hard-coded correction/substitution of any kind happens here or
-    anywhere else in this module; that is command_normalizer.py's job,
-    after this.
-    """
-    try:
-        asr = _get_pipeline()
-        result = asr(
-            {"raw": audio_array, "sampling_rate": _TARGET_SAMPLE_RATE},
-            generate_kwargs={
-                "language": _LANGUAGE,
-                "task": "transcribe",
-                "do_sample": False,
-                "no_repeat_ngram_size": 3,
-            },
-        )
-        text = (result.get("text") or "").strip()
-        logger.info('STT DEBUG:\nraw_transcript="%s"', text)
-        return text or None
-    except Exception as exc:
-        logger.warning("Whisper transcription failed: %s", exc)
+    api_key = os.environ.get(_GROQ_API_KEY_ENV)
+    if not api_key:
+        logger.error("Speech-to-text is not configured: the %s environment variable is not set", _GROQ_API_KEY_ENV)
         return None
+
+    import httpx
+
+    extension = _guess_extension(audio_bytes)
+    logger.info(
+        "STT: sending %d bytes (detected format: %s) to Groq %s", len(audio_bytes), extension, _WHISPER_MODEL_ID
+    )
+
+    try:
+        response = httpx.post(
+            _GROQ_TRANSCRIPTION_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            data={
+                "model": _WHISPER_MODEL_ID,
+                "language": _LANGUAGE,
+                "temperature": "0",
+                "response_format": "verbose_json",
+            },
+            files={"file": (f"audio.{extension}", audio_bytes)},
+            timeout=_REQUEST_TIMEOUT_SECONDS,
+        )
+    except httpx.TimeoutException:
+        logger.error("STT failed: Groq did not respond within %d s", _REQUEST_TIMEOUT_SECONDS)
+        return None
+    except httpx.HTTPError as exc:
+        logger.error("STT failed: could not reach Groq (%s: %s)", type(exc).__name__, exc)
+        return None
+
+    if response.status_code != 200:
+        try:
+            error = response.json().get("error", {})
+            detail = f"{error.get('code') or error.get('type')}: {error.get('message')}"
+        except ValueError:
+            detail = response.text[:300]
+        logger.error("STT failed: Groq returned HTTP %d (%s)", response.status_code, detail)
+        return None
+
+    try:
+        body = response.json()
+    except ValueError:
+        logger.error("STT failed: Groq returned a non-JSON response: %r", response.text[:300])
+        return None
+
+    text = (body.get("text") or "").strip()
+    duration = body.get("duration")
+    logger.info('STT DEBUG:\nduration=%ss\nraw_transcript="%s"', duration, text)
+
+    if isinstance(duration, (int, float)) and duration < _MIN_DURATION_SECONDS:
+        logger.warning("Rejecting transcript: audio too short (%.2fs < %ss minimum)", duration, _MIN_DURATION_SECONDS)
+        return None
+    if _is_silence_hallucination(text):
+        logger.warning("Rejecting transcript %r: no speech detected (silent or near-silent audio)", text)
+        return None
+
+    return text
 
 
 def get_voice_input(prompt: str = "Speak your request now...") -> str:
@@ -274,29 +187,29 @@ def get_voice_input(prompt: str = "Speak your request now...") -> str:
 
 
 def transcribe_audio_bytes(audio_bytes: bytes) -> Optional[str]:
-    """Transcribe an already-recorded audio clip to text via openai/whisper-large-v3-turbo, or return None on failure.
+    """Transcribe an already-recorded audio clip to text via Groq's Whisper API, or return None on failure.
 
     Never raises and never falls back to input() - this is meant for a
-    server context with no terminal and no microphone. Accepts any format
-    libsndfile can decode (WAV, FLAC, AIFF) - a browser's default
-    webm/ogg/mp3 recording still needs converting to one of these first.
+    server context with no terminal and no microphone. Accepts the formats
+    browsers record (WebM/Opus, OGG/Opus, MP4/AAC) plus WAV, FLAC and MP3,
+    sent to Groq as-is - no local decoding or conversion.
 
-    Returns None (never calling Whisper at all) for empty, too-short, or
-    near-silent audio, in addition to the existing "Whisper itself failed"
-    case - both are surfaced identically to the caller today (api/server.py
-    turns any None into the same clean error response); which specific
-    reason it happened for is only visible in the logs.
+    Returns None for empty, oversized, too-short or silent audio, and when
+    the API call fails - all surfaced identically to the caller
+    (api/server.py turns any None into the same clean error response); the
+    specific reason is in the logs.
     """
     if not audio_bytes:
+        logger.warning("Rejecting audio: the upload is empty (0 bytes)")
+        return None
+    if len(audio_bytes) > _MAX_UPLOAD_BYTES:
+        logger.warning(
+            "Rejecting audio: %d bytes is over the %d-byte speech-to-text upload limit", len(audio_bytes), _MAX_UPLOAD_BYTES
+        )
         return None
 
     try:
-        audio_array = _decode_and_prepare(audio_bytes)
-    except _InvalidAudio as exc:
-        logger.warning("Rejecting audio before sending it to Whisper: %s", exc)
+        return _transcribe_with_groq(audio_bytes)
+    except Exception:
+        logger.exception("STT failed with an unexpected error")
         return None
-    except Exception as exc:
-        logger.warning("Audio decoding failed: %s", exc)
-        return None
-
-    return _transcribe_array(audio_array)

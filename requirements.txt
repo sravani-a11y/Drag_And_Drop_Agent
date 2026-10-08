@@ -8,5 +8,8 @@ starlette==1.3.1
 uvicorn==0.52.1
 python-multipart==0.0.32
 
-# Voice (/api/agent/voice, voice_input.py) is intentionally not included here:
-# torch, torchaudio, transformers, soundfile, numpy, speechrecognition.
+# Voice (/api/agent/voice, voice_input.py): speech-to-text runs on Groq's
+# hosted Whisper API (needs the GROQ_API_KEY environment variable), called
+# with httpx - no local model, PyTorch or ffmpeg needed.
+# speechrecognition is CLI microphone capture only - not needed on a server.
+httpx==0.28.1
