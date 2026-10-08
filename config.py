@@ -1,9 +1,17 @@
-"""Configuration for the LLM provider used by the assistant."""
+"""Configuration for the LLM provider."""
 
+import os
 import ollama
 
-LLM_MODEL = "qwen2.5:7b"
+LLM_MODEL = os.getenv("COCO_MODEL", "gpt-oss:20b-cloud")
 
 
 def get_client() -> ollama.Client:
-    return ollama.Client()
+    api_key = os.environ["OLLAMA_API_KEY"]
+
+    return ollama.Client(
+        host="https://ollama.com",
+        headers={
+            "Authorization": f"Bearer {api_key}"
+        },
+    )
