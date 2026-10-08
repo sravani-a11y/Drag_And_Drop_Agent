@@ -12,14 +12,19 @@ calls this package yet.
 """
 
 from .context_engine import (
+    AmbiguousComponentError,
+    ComponentNotFoundError,
     add_component,
     clear,
     connect_components,
+    connection_exists,
+    find_connection_key,
     disconnect_components,
     find_instance_id,
     get_context,
     move_component,
     remove_component,
+    resolve_component,
     select_component,
     sync_from_canvas,
 )
@@ -37,4 +42,9 @@ __all__ = [
     "clear",
     "sync_from_canvas",
     "find_instance_id",
+    "resolve_component",
+    "connection_exists",
+    "find_connection_key",
+    "ComponentNotFoundError",
+    "AmbiguousComponentError",
 ]

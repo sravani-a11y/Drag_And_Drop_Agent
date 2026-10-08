@@ -92,12 +92,14 @@ class ConnectTool:
             source_component,
             target_component,
         )
-        return self._dispatch(
-            "disconnectComponents",
-            _with_instance_ids(
-                {"sourceComponentId": source_component, "targetComponentId": target_component},
-                source_component,
-                target_component,
-            ),
-            mock_result={},
+        payload = _with_instance_ids(
+            {"sourceComponentId": source_component, "targetComponentId": target_component},
+            source_component,
+            target_component,
         )
+        # The frontend removes a connection by its own connectionKey, so pass
+        # the exact key it synced (when the connection came from canvas_state).
+        connection_key = context_engine.find_connection_key(source_component, target_component)
+        if connection_key is not None:
+            payload["connectionKey"] = connection_key
+        return self._dispatch("disconnectComponents", payload, mock_result={})

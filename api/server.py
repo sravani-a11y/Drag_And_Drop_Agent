@@ -23,7 +23,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.models import AgentResponse, ExecuteRequest, HealthResponse, VoiceResponse
+from api.models import ChatResponse, ExecuteRequest, HealthResponse, VoiceResponse
 from context import context_engine
 from graph import run_workflow
 
@@ -65,12 +65,16 @@ def _agent_response_from_workflow(result: dict) -> dict:
     ToolExecutor/Verifier.
     """
     completed = result.get("status") == "completed"
-    return {
+    response = {
         "status": "success" if completed else "error",
         "message": "Command executed successfully" if completed else (result.get("error") or "Command execution failed"),
         "commands": result.get("mcp_commands", []),
         "results": result.get("tool_results", []),
     }
+    failed_step = (result.get("verification_result") or {}).get("failed_step") or {}
+    if not completed and failed_step.get("needs_clarification"):
+        response["needs_clarification"] = True
+    return response
 
 
 @app.exception_handler(RequestValidationError)
@@ -100,7 +104,7 @@ def health() -> dict:
     return {"status": "ok", "service": "InnoIDE AI Agent"}
 
 
-@app.post("/api/agent/chat", response_model=AgentResponse)
+@app.post("/api/agent/chat", response_model=ChatResponse, response_model_exclude_none=True)
 def execute_command(request: ExecuteRequest) -> dict:
     """Run one natural-language command through the existing LangGraph agent.
 

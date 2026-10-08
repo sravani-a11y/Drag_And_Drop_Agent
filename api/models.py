@@ -75,6 +75,17 @@ class AgentResponse(BaseModel):
     results: List[Dict[str, Any]] = []
 
 
+class ChatResponse(AgentResponse):
+    """POST /api/agent/chat response - AgentResponse plus needs_clarification.
+
+    needs_clarification is only present (true) when the request named an
+    ambiguous component; status stays "error" in that case, so existing
+    clients keep working.
+    """
+
+    needs_clarification: Optional[bool] = None
+
+
 class VoiceResponse(AgentResponse):
     """POST /api/agent/voice response - AgentResponse plus the transcript and its normalized form.
 

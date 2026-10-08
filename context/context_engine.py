@@ -186,6 +186,23 @@ def _matching_keys(reference: Any) -> List[str]:
     return by_name
 
 
+class ComponentNotFoundError(ValueError):
+    """The referenced component isn't on the canvas."""
+
+    def __init__(self, message: str, reference: Any) -> None:
+        super().__init__(message)
+        self.reference = reference
+
+
+class AmbiguousComponentError(ValueError):
+    """The reference matches more than one component on the canvas."""
+
+    def __init__(self, message: str, reference: Any, instance_ids: List[Any]) -> None:
+        super().__init__(message)
+        self.reference = reference
+        self.instance_ids = instance_ids
+
+
 def _require_tracked(component_id: str, action: str) -> str:
     """Return the tracked key for `component_id`, or raise if it isn't on the canvas (or is ambiguous).
 
@@ -204,13 +221,45 @@ def _require_tracked(component_id: str, action: str) -> str:
     if matches:
         instance_ids = [_session.components[key].get("instance_id") for key in matches]
         logger.error("Context: %s rejected - %r matches %d components %s", action, component_id, len(matches), instance_ids)
-        raise ValueError(
+        raise AmbiguousComponentError(
             f"Cannot {action}: {component_id!r} matches {len(matches)} components on the canvas "
-            f"(instance ids {instance_ids})"
+            f"(instance ids {instance_ids})",
+            component_id,
+            instance_ids,
         )
 
     logger.error("Context: %s rejected - untracked component_id=%r", action, component_id)
-    raise ValueError(f"Cannot {action}: component {component_id!r} is not on the canvas")
+    raise ComponentNotFoundError(f"Cannot {action}: component {component_id!r} is not on the canvas", component_id)
+
+
+def resolve_component(component_reference: Any) -> str:
+    """The tracked key `component_reference` names; raises ComponentNotFoundError / AmbiguousComponentError.
+
+    Read-only - used to check an operation's components exist before it runs.
+    """
+    return _require_tracked(component_reference, "resolve_component")
+
+
+def connection_exists(source_component: Any, target_component: Any) -> bool:
+    """Whether the two components (resolved as resolve_component() does) are connected. Read-only."""
+    source_key = resolve_component(source_component)
+    target_key = resolve_component(target_component)
+    return _connection_key(source_key, target_key) in _session.connections
+
+
+def find_connection_key(source_component: Any, target_component: Any) -> Optional[str]:
+    """The frontend's own connectionKey for the connection between the two components, else None.
+
+    Taken exactly as the frontend sent it in canvas_state (never rebuilt
+    here). None when either component doesn't resolve to exactly one, they
+    aren't connected, or the connection wasn't synced from the frontend.
+    Never raises - callers use this to enrich a command when possible.
+    """
+    source_matches, target_matches = _matching_keys(source_component), _matching_keys(target_component)
+    if len(source_matches) != 1 or len(target_matches) != 1:
+        return None
+    connection = _session.connections.get(_connection_key(source_matches[0], target_matches[0]))
+    return connection.get("connection_key") if connection else None
 
 
 def find_instance_id(component_reference: Any) -> Optional[Any]:

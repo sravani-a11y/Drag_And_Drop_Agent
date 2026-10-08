@@ -19,9 +19,9 @@ for a failed step.
 """
 
 import logging
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
-from context import context_engine
+from context import AmbiguousComponentError, ComponentNotFoundError, context_engine
 from tools.canvas_tool import CanvasTool
 from tools.component_tool import ComponentTool
 from tools.connect_tool import ConnectTool
@@ -87,7 +87,57 @@ class ToolExecutor:
     def _sync_disconnect_components(input_value: Dict[str, Any]) -> None:
         context_engine.disconnect_components(input_value["source_component"], input_value["target_component"])
 
-    def _sync_context(self, tool_name: str, input_value: Any, result: Any) -> None:
+    @staticmethod
+    def _join(names: List[Any]) -> str:
+        return " and ".join(str(name) for name in names)
+
+    def _precheck(self, tool_name: str, input_value: Any) -> Optional[StepResult]:
+        """Check, before the tool runs, that the components (and connection) a step needs exist.
+
+        A step that would act on a missing or ambiguous component fails here
+        - so no command is ever sent to the frontend for an operation that
+        can't be performed. Returns the failed StepResult, or None to run
+        the step. Read-only: never changes the Context Engine.
+        """
+        if tool_name == "connect_components":
+            source, target = input_value["source_component"], input_value["target_component"]
+            action, references = f"connect {source} to {target}", [source, target]
+        elif tool_name == "disconnect_components":
+            source, target = input_value["source_component"], input_value["target_component"]
+            action, references = f"disconnect {source} from {target}", [source, target]
+        elif tool_name == "move_component":
+            action, references = f"move {input_value['component_id']}", [input_value["component_id"]]
+        elif tool_name == "delete_component":
+            action, references = f"remove {input_value}", [input_value]
+        else:
+            return None
+
+        missing = []
+        for reference in references:
+            try:
+                context_engine.resolve_component(reference)
+            except AmbiguousComponentError as exc:
+                message = (
+                    f"Cannot {action} because {len(exc.instance_ids)} components match {reference!r} on the canvas "
+                    f"(instance ids {exc.instance_ids}). Please specify which one."
+                )
+                logger.warning("Tool %s not run: %s", tool_name, message)
+                return {"tool": tool_name, "status": "failed", "error": message, "needs_clarification": True}
+            except ComponentNotFoundError:
+                missing.append(reference)
+
+        if missing:
+            verb = "was" if len(missing) == 1 else "were"
+            message = f"Cannot {action} because {self._join(missing)} {verb} not found."
+        elif tool_name == "disconnect_components" and not context_engine.connection_exists(source, target):
+            message = f"Cannot {action} because they are not connected."
+        else:
+            return None
+
+        logger.warning("Tool %s not run: %s", tool_name, message)
+        return {"tool": tool_name, "status": "failed", "error": message}
+
+    def _sync_context(self, tool_name: str, input_value: Any, result: Any) -> Optional[str]:
         """Mirror a successful tool's effect into the Context Engine.
 
         A tool can complete without raising an exception yet still report
@@ -98,22 +148,24 @@ class ToolExecutor:
         raised" - the Bridge remains the sole source of truth for whether
         an operation actually happened.
 
-        A sync failure itself is logged, not raised: the underlying
-        operation already happened, so a mirroring problem must not turn
-        an otherwise-successful step into a failure.
+        Returns None on success, or the error message when the Context
+        Engine refused the change - the caller reports that step as failed
+        instead of claiming a success the agent's state doesn't reflect.
         """
         if isinstance(result, dict) and not result.get("success", True):
             logger.debug("Skipping Context Engine sync for %s - tool reported failure", tool_name)
-            return
+            return None
 
         sync = self._context_sync.get(tool_name)
         if sync is None:
-            return
+            return None
 
         try:
             sync(input_value)
         except Exception as exc:
             logger.error("Context Engine sync failed for %s: %s", tool_name, exc)
+            return str(exc)
+        return None
 
     @staticmethod
     def _invoke(handler: Callable[..., Dict[str, Any]], input_value: Any) -> Dict[str, Any]:
@@ -151,14 +203,25 @@ class ToolExecutor:
             logger.error("Tool execution failed: %s - %s", tool_name, error)
             return {"tool": tool_name, "status": "failed", "error": error}
 
+        failed = self._precheck(tool_name, input_value)
+        if failed is not None:
+            return failed
+
         try:
             result = self._invoke(handler, input_value)
         except Exception as exc:
             logger.error("Tool execution failed: %s - %s", tool_name, exc)
             return {"tool": tool_name, "status": "failed", "error": str(exc)}
 
+        if isinstance(result, dict) and result.get("success") is False:
+            error = result.get("error") or f"{tool_name} failed"
+            logger.error("Tool execution failed: %s - tool reported failure: %s", tool_name, error)
+            return {"tool": tool_name, "status": "failed", "error": error, "result": result}
+
         logger.info("Tool execution completed: %s", tool_name)
-        self._sync_context(tool_name, input_value, result)
+        sync_error = self._sync_context(tool_name, input_value, result)
+        if sync_error is not None:
+            return {"tool": tool_name, "status": "failed", "error": sync_error, "result": result}
         return {"tool": tool_name, "status": "success", "result": result}
 
     def execute_plan(self, plan: List[Dict[str, Any]]) -> List[StepResult]:
