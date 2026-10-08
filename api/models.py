@@ -7,15 +7,56 @@ just because the existing MCP Bridge/ToolExecutor add a new field to what
 they already return.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, field_validator
 
+# Instance IDs are JavaScript numbers created by the frontend
+# (e.g. 1775642938124.512). int is tried first so a whole-number ID keeps its
+# exact form instead of becoming a float.
+InstanceId = Union[int, float]
+
+
+class CanvasComponent(BaseModel):
+    """One placed component in the frontend's active tab, as sent by the frontend."""
+
+    id: InstanceId
+    name: str
+    label: Optional[str] = None
+    x: Union[int, float]
+    y: Union[int, float]
+    width: Optional[Union[int, float]] = None
+    height: Optional[Union[int, float]] = None
+    rotation: Optional[Union[int, float]] = None
+
+
+class CanvasConnection(BaseModel):
+    """One connection between two placed components, by their instance IDs."""
+
+    connectionKey: Optional[str] = None
+    sourceId: InstanceId
+    targetId: InstanceId
+
+
+class CanvasState(BaseModel):
+    """The frontend's current canvas (active tab), sent with a chat request."""
+
+    tabId: Optional[int] = None
+    tabName: Optional[str] = None
+    components: List[CanvasComponent] = []
+    connections: List[CanvasConnection] = []
+
 
 class ExecuteRequest(BaseModel):
-    """POST /api/agent/execute request body."""
+    """POST /api/agent/execute request body.
+
+    canvas_state is optional: when present, the Context Engine is synced to
+    it before the request runs, so the agent works from the frontend's real
+    canvas; when absent, the agent's own memory is used exactly as before.
+    """
 
     command: str
+    canvas_state: Optional[CanvasState] = None
 
     @field_validator("command")
     @classmethod

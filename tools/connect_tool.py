@@ -13,8 +13,23 @@ import logging
 from typing import Any, Dict
 
 from bridge import bridge as default_bridge
+from context import context_engine
 
 logger = logging.getLogger(__name__)
+
+
+def _with_instance_ids(payload: Dict[str, Any], source_component: str, target_component: str) -> Dict[str, Any]:
+    """Add the frontend's sourceId/targetId to `payload` when both components are known canvas instances.
+
+    The name fields stay unchanged, so a frontend that ignores the IDs
+    behaves exactly as before. IDs are only added when each name resolves to
+    exactly one synced component (never for an ambiguous or unsynced one).
+    """
+    source_id = context_engine.find_instance_id(source_component)
+    target_id = context_engine.find_instance_id(target_component)
+    if source_id is not None and target_id is not None:
+        payload = {**payload, "sourceId": source_id, "targetId": target_id}
+    return payload
 
 
 class ConnectTool:
@@ -58,7 +73,11 @@ class ConnectTool:
         )
         return self._dispatch(
             "connectComponents",
-            {"sourceComponentId": source_component, "targetComponentId": target_component},
+            _with_instance_ids(
+                {"sourceComponentId": source_component, "targetComponentId": target_component},
+                source_component,
+                target_component,
+            ),
             mock_result={"connectionId": "123-456"},
         )
 
@@ -75,6 +94,10 @@ class ConnectTool:
         )
         return self._dispatch(
             "disconnectComponents",
-            {"sourceComponentId": source_component, "targetComponentId": target_component},
+            _with_instance_ids(
+                {"sourceComponentId": source_component, "targetComponentId": target_component},
+                source_component,
+                target_component,
+            ),
             mock_result={},
         )

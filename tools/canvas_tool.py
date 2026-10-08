@@ -84,8 +84,15 @@ class CanvasTool:
         self.bridge.send("getCanvasState", {})
 
         context = context_engine.get_context()
+        # Display names rather than internal keys: two synced Temperature
+        # Sensors are keyed "Temperature Sensor [<id>]" internally, but are
+        # both "Temperature Sensor" to the user. For components the agent
+        # added itself, display name and key are the same, as before.
         return {
-            "symbols": list(context.get("components", {}).keys()),
+            "symbols": [
+                metadata.get("display_name", key) if isinstance(metadata, dict) else key
+                for key, metadata in context.get("components", {}).items()
+            ],
             "connections": list(context.get("connections", {}).values()),
         }
 

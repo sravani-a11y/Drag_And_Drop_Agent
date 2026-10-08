@@ -15,8 +15,21 @@ import logging
 from typing import Any, Dict
 
 from bridge import bridge as default_bridge
+from context import context_engine
 
 logger = logging.getLogger(__name__)
+
+
+def _with_instance_id(payload: Dict[str, Any], component_id: str) -> Dict[str, Any]:
+    """Add the frontend's instance "id" to `payload` when `component_id` is exactly one synced canvas component.
+
+    componentId stays unchanged, so a frontend that ignores "id" behaves
+    exactly as before.
+    """
+    instance_id = context_engine.find_instance_id(component_id)
+    if instance_id is not None:
+        payload = {**payload, "id": instance_id}
+    return payload
 
 
 class ComponentTool:
@@ -76,7 +89,7 @@ class ComponentTool:
         logger.info("delete_component called with component_id=%r", component_id)
         return self._dispatch(
             "removeComponentFromCanvas",
-            {"componentId": component_id},
+            _with_instance_id({"componentId": component_id}, component_id),
             mock_result={},
         )
 
@@ -105,7 +118,7 @@ class ComponentTool:
         logger.info("move_component called with component_id=%r, x=%d, y=%d", component_id, x, y)
         return self._dispatch(
             "moveComponent",
-            {"componentId": component_id, "x": x, "y": y},
+            _with_instance_id({"componentId": component_id, "x": x, "y": y}, component_id),
             mock_result={},
         )
 

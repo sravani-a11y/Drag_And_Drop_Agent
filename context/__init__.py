@@ -16,10 +16,12 @@ from .context_engine import (
     clear,
     connect_components,
     disconnect_components,
+    find_instance_id,
     get_context,
     move_component,
     remove_component,
     select_component,
+    sync_from_canvas,
 )
 from .session_state import SessionState
 
@@ -33,4 +35,6 @@ __all__ = [
     "select_component",
     "get_context",
     "clear",
+    "sync_from_canvas",
+    "find_instance_id",
 ]

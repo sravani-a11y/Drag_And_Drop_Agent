@@ -16,6 +16,7 @@ being up.
 
 import logging
 import os
+import threading
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
@@ -23,12 +24,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.models import AgentResponse, ExecuteRequest, HealthResponse, VoiceResponse
+from context import context_engine
 from graph import run_workflow
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="InnoIDE AI Agent API", version="1.0.0")
+
+# The Context Engine is one process-wide session. A request that syncs the
+# frontend canvas into it must run its whole workflow before another
+# request can replace that canvas, so requests touching it run one at a time.
+_workflow_lock = threading.Lock()
 
 # Configurable via env var so this never hard-codes a production origin -
 # comma-separated for more than one (e.g. a deployed URL plus local dev).
@@ -102,7 +109,12 @@ def execute_command(request: ExecuteRequest) -> dict:
     validation error is caught by validation_exception_handler() above.
     """
     logger.info("[/api/agent/chat] command=%r", request.command)
-    result = run_workflow(request.command)
+    with _workflow_lock:
+        if request.canvas_state is not None:
+            # The frontend's canvas is the source of truth for this request.
+            summary = context_engine.sync_from_canvas(request.canvas_state.model_dump())
+            logger.info("[/api/agent/chat] canvas_state synced: %s", summary)
+        result = run_workflow(request.command)
     return _agent_response_from_workflow(result)
 
 
@@ -151,7 +163,8 @@ async def execute_voice_command(audio: UploadFile) -> dict:
         logger.warning("[/api/agent/voice] rejected a severely repetitive/corrupted transcript: %r", transcript)
         return {"status": "error", "message": "Speech not understood", "transcript": transcript}
 
-    result = run_workflow(normalized_command)
+    with _workflow_lock:
+        result = run_workflow(normalized_command)
     response = _agent_response_from_workflow(result)
     response["transcript"] = transcript
     response["normalized_command"] = normalized_command

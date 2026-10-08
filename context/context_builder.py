@@ -54,12 +54,37 @@ class ContextBuilder:
             return str(metadata["name"])
         return component_id
 
+    @staticmethod
+    def _synced_component_line(metadata: Dict[str, Any]) -> str:
+        """One line for a component synced from the frontend canvas: name, type, instance ID, position."""
+        name = metadata.get("display_name")
+        component_name = metadata.get("component_name")
+        position = metadata.get("position") or {}
+        kind = f" ({component_name})" if component_name and component_name != name else ""
+        return f"{name}{kind} [id {metadata.get('instance_id')}] at ({position.get('x')}, {position.get('y')})"
+
     def _components_section(self, components: Dict[str, Any]) -> str:
-        lines = [self._component_label(component_id, metadata) for component_id, metadata in components.items()]
+        lines = [
+            self._synced_component_line(metadata)
+            if isinstance(metadata, dict) and metadata.get("instance_id") is not None
+            else self._component_label(component_id, metadata)
+            for component_id, metadata in components.items()
+        ]
         return self._section("Components", lines)
 
-    def _connections_section(self, connections: Dict[str, Dict[str, str]]) -> str:
-        lines = [f"{conn['source']} → {conn['target']}" for conn in connections.values()]
+    @staticmethod
+    def _connection_end(key: str, components: Dict[str, Any]) -> str:
+        """A connection end as the user would name it: display name, plus the instance ID when known."""
+        metadata = components.get(key) or {}
+        if metadata.get("instance_id") is None:
+            return key
+        return f"{metadata.get('display_name', key)} [id {metadata['instance_id']}]"
+
+    def _connections_section(self, connections: Dict[str, Dict[str, str]], components: Dict[str, Any]) -> str:
+        lines = [
+            f"{self._connection_end(conn['source'], components)} → {self._connection_end(conn['target'], components)}"
+            for conn in connections.values()
+        ]
         return self._section("Connections", lines)
 
     def _selected_component_section(self, selected_component: Optional[str]) -> str:
@@ -91,7 +116,7 @@ class ContextBuilder:
         sections = [
             "Current Canvas",
             self._components_section(context.get("components", {})),
-            self._connections_section(context.get("connections", {})),
+            self._connections_section(context.get("connections", {}), context.get("components", {})),
             self._selected_component_section(context.get("selected_component")),
             self._last_action_section(context.get("last_action")),
         ]

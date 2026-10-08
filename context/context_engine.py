@@ -40,7 +40,7 @@ batch must fail loudly here rather than quietly corrupting the canvas.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from knowledge_loader import KnowledgeLoader
 
@@ -120,23 +120,74 @@ def add_component(component_id: str, x: int, y: int) -> None:
     there's no match). Position is stored separately, in
     component_positions, exactly as before - get_context() composes it
     into each component's metadata only when the snapshot is read out.
+
+    If the name is already taken by a component synced from the frontend
+    canvas (one with an instance ID), the new one gets its own key
+    ("ESP32 #2") instead of overwriting it - the canvas really does hold
+    both until the next sync replaces this record with the frontend's truth.
     """
     catalog_entry = _find_catalog_entry(component_id)
 
-    _session.components[component_id] = {
+    key = component_id
+    if key in _session.components and _session.components[key].get("instance_id") is not None:
+        suffix = 2
+        while f"{component_id} #{suffix}" in _session.components:
+            suffix += 1
+        key = f"{component_id} #{suffix}"
+
+    _session.components[key] = {
         "id": catalog_entry["id"] if catalog_entry else _slugify(component_id),
         "display_name": component_id,
         "category": catalog_entry.get("category", _DEFAULT_CATEGORY) if catalog_entry else _DEFAULT_CATEGORY,
         "status": "active",
         "properties": {},
     }
-    _session.component_positions[component_id] = {"x": x, "y": y}
+    _session.component_positions[key] = {"x": x, "y": y}
     _record_action("add_component", component_id=component_id, x=x, y=y)
     logger.info("Context: added component %r at (%d, %d)", component_id, x, y)
 
 
-def _require_tracked(component_id: str, action: str) -> None:
-    """Raise if `component_id` isn't currently tracked on the canvas.
+def _instance_id_key(instance_id: Any) -> str:
+    """Normalize an instance ID for comparison (1775642938124.512, "1775642938124.512" and 5 vs 5.0 all compare equal)."""
+    try:
+        number = float(instance_id)
+    except (TypeError, ValueError):
+        return str(instance_id).strip()
+    return repr(int(number)) if number.is_integer() else repr(number)
+
+
+def _matching_keys(reference: Any) -> List[str]:
+    """Every tracked component key that `reference` names.
+
+    `reference` may be the internal key itself, a frontend instance ID, or a
+    name (case-insensitive) matching the component's display name, its
+    frontend label (e.g. "ESP32") or its frontend component name (e.g.
+    "Microcontroller"). More than one key back means the reference is
+    ambiguous (e.g. "Temperature Sensor" when two are placed).
+    """
+    if reference in _session.components:
+        return [reference]
+
+    reference_id = _instance_id_key(reference)
+    by_id = [
+        key
+        for key, metadata in _session.components.items()
+        if metadata.get("instance_id") is not None and _instance_id_key(metadata["instance_id"]) == reference_id
+    ]
+    if by_id:
+        return by_id
+
+    wanted = str(reference).strip().lower()
+    by_name = []
+    for key, metadata in _session.components.items():
+        names = {key, metadata.get("display_name"), metadata.get("label"), metadata.get("component_name")}
+        if wanted in {str(name).strip().lower() for name in names if name}:
+            by_name.append(key)
+    return by_name
+
+
+def _require_tracked(component_id: str, action: str) -> str:
+    """Return the tracked key for `component_id`, or raise if it isn't on the canvas (or is ambiguous).
 
     Turns what used to be "log a warning but proceed anyway" for
     move_component/remove_component/connect_components into a hard stop:
@@ -146,9 +197,135 @@ def _require_tracked(component_id: str, action: str) -> None:
     a component that doesn't exist) - exactly the "untracked component"
     issue that would otherwise surface downstream, in get_canvas_state().
     """
-    if component_id not in _session.components:
-        logger.error("Context: %s rejected - untracked component_id=%r", action, component_id)
-        raise ValueError(f"Cannot {action}: component {component_id!r} is not on the canvas")
+    matches = _matching_keys(component_id)
+    if len(matches) == 1:
+        return matches[0]
+
+    if matches:
+        instance_ids = [_session.components[key].get("instance_id") for key in matches]
+        logger.error("Context: %s rejected - %r matches %d components %s", action, component_id, len(matches), instance_ids)
+        raise ValueError(
+            f"Cannot {action}: {component_id!r} matches {len(matches)} components on the canvas "
+            f"(instance ids {instance_ids})"
+        )
+
+    logger.error("Context: %s rejected - untracked component_id=%r", action, component_id)
+    raise ValueError(f"Cannot {action}: component {component_id!r} is not on the canvas")
+
+
+def find_instance_id(component_reference: Any) -> Optional[Any]:
+    """The frontend instance ID of the one component `component_reference` names, else None.
+
+    None when it isn't on the canvas, is ambiguous, or was added by the
+    agent and not yet synced back from the frontend (so it has no ID yet).
+    Never raises - callers use this to enrich a command when possible.
+    """
+    matches = _matching_keys(component_reference)
+    if len(matches) != 1:
+        return None
+    return _session.components[matches[0]].get("instance_id")
+
+
+def sync_from_canvas(canvas_state: Dict[str, Any]) -> Dict[str, Any]:
+    """Replace the tracked canvas with the frontend's current canvas (its active tab).
+
+    The frontend is the source of truth: components, positions and
+    connections from `canvas_state` replace what the agent had recorded,
+    so components the user dragged in by hand are known and ones they
+    deleted are gone. Each component is tracked under its label (or name)
+    when that is unique on the canvas, else under "<label> [<instance id>]",
+    so duplicates stay distinct; its instance ID, frontend name, label,
+    size and rotation are kept in its metadata. Connections are stored with
+    their real sourceId/targetId. The selection is kept only if that
+    component is still present; last_action (the agent's memory of what it
+    last did) is kept as-is.
+
+    Args:
+        canvas_state: {"tabId", "tabName", "components": [{"id", "name",
+            "label", "x", "y", "width", "height", "rotation"}],
+            "connections": [{"connectionKey", "sourceId", "targetId"}]}.
+
+    Returns:
+        {"components": int, "connections": int, "skipped_connections": int}
+    """
+    canvas_components = canvas_state.get("components") or []
+    canvas_connections = canvas_state.get("connections") or []
+
+    def display_name(component: Dict[str, Any]) -> str:
+        label = component.get("label")
+        return str(label).strip() if label and str(label).strip() else str(component.get("name", "")).strip()
+
+    name_counts: Dict[str, int] = {}
+    for component in canvas_components:
+        lowered = display_name(component).lower()
+        name_counts[lowered] = name_counts.get(lowered, 0) + 1
+
+    components: Dict[str, Dict[str, Any]] = {}
+    positions: Dict[str, Dict[str, Any]] = {}
+    key_by_instance: Dict[str, str] = {}
+    for component in canvas_components:
+        name = display_name(component)
+        instance_id = component.get("id")
+        key = name if name_counts[name.lower()] == 1 else f"{name} [{instance_id}]"
+
+        catalog_entry = _find_catalog_entry(name) or _find_catalog_entry(str(component.get("name", "")))
+        components[key] = {
+            "id": catalog_entry["id"] if catalog_entry else _slugify(name),
+            "display_name": name,
+            "category": catalog_entry.get("category", _DEFAULT_CATEGORY) if catalog_entry else _DEFAULT_CATEGORY,
+            "status": "active",
+            "properties": {},
+            "instance_id": instance_id,
+            "component_name": component.get("name"),
+            "label": component.get("label"),
+            "size": {"width": component.get("width"), "height": component.get("height")},
+            "rotation": component.get("rotation"),
+            "source": "canvas",
+        }
+        positions[key] = {"x": component.get("x"), "y": component.get("y")}
+        key_by_instance[_instance_id_key(instance_id)] = key
+
+    connections: Dict[str, Dict[str, Any]] = {}
+    skipped = 0
+    for connection in canvas_connections:
+        source_id, target_id = connection.get("sourceId"), connection.get("targetId")
+        source = key_by_instance.get(_instance_id_key(source_id))
+        target = key_by_instance.get(_instance_id_key(target_id))
+        if source is None or target is None:
+            skipped += 1
+            logger.warning(
+                "Context: canvas connection %r skipped - sourceId=%r/targetId=%r not among the canvas components",
+                connection.get("connectionKey"),
+                source_id,
+                target_id,
+            )
+            continue
+        connections[_connection_key(source, target)] = {
+            "source": source,
+            "target": target,
+            "status": "connected",
+            "source_id": source_id,
+            "target_id": target_id,
+            "connection_key": connection.get("connectionKey"),
+        }
+
+    _session.components.clear()
+    _session.components.update(components)
+    _session.component_positions.clear()
+    _session.component_positions.update(positions)
+    _session.connections.clear()
+    _session.connections.update(connections)
+    if _session.selected_component not in _session.components:
+        _session.selected_component = None
+
+    summary = {"components": len(components), "connections": len(connections), "skipped_connections": skipped}
+    logger.info(
+        "Context: synced from frontend canvas (tabId=%r, tabName=%r): %s",
+        canvas_state.get("tabId"),
+        canvas_state.get("tabName"),
+        summary,
+    )
+    return summary
 
 
 def remove_component(component_id: str) -> None:
@@ -161,7 +338,7 @@ def remove_component(component_id: str) -> None:
     Raises:
         ValueError: `component_id` isn't currently tracked.
     """
-    _require_tracked(component_id, "remove_component")
+    component_id = _require_tracked(component_id, "remove_component")
 
     _session.components.pop(component_id, None)
     _session.component_positions.pop(component_id, None)
@@ -187,7 +364,7 @@ def move_component(component_id: str, x: int, y: int) -> None:
     Raises:
         ValueError: `component_id` isn't currently tracked.
     """
-    _require_tracked(component_id, "move_component")
+    component_id = _require_tracked(component_id, "move_component")
 
     _session.component_positions[component_id] = {"x": x, "y": y}
     _record_action("move_component", component_id=component_id, x=x, y=y)
@@ -201,21 +378,34 @@ def connect_components(source_component: str, target_component: str) -> None:
         ValueError: either `source_component` or `target_component` isn't
             currently tracked.
     """
-    _require_tracked(source_component, "connect_components")
-    _require_tracked(target_component, "connect_components")
+    source_component = _require_tracked(source_component, "connect_components")
+    target_component = _require_tracked(target_component, "connect_components")
 
     key = _connection_key(source_component, target_component)
-    _session.connections[key] = {
+    connection = {
         "source": source_component,
         "target": target_component,
         "status": "connected",
     }
+    # Components synced from the frontend carry instance IDs - record the
+    # connection with them too, the way the frontend identifies it.
+    source_id = _session.components[source_component].get("instance_id")
+    target_id = _session.components[target_component].get("instance_id")
+    if source_id is not None and target_id is not None:
+        connection["source_id"] = source_id
+        connection["target_id"] = target_id
+    _session.connections[key] = connection
     _record_action("connect_components", source_component=source_component, target_component=target_component)
     logger.info("Context: connected %r <-> %r", source_component, target_component)
 
 
 def disconnect_components(source_component: str, target_component: str) -> None:
     """Record that the connection between two components was removed."""
+    source_matches, target_matches = _matching_keys(source_component), _matching_keys(target_component)
+    if len(source_matches) == 1:
+        source_component = source_matches[0]
+    if len(target_matches) == 1:
+        target_component = target_matches[0]
     key = _connection_key(source_component, target_component)
     if key not in _session.connections:
         logger.warning(
