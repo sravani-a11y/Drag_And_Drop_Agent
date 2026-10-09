@@ -99,15 +99,18 @@ check("B2. reversed order -> success with the same connectionKey",
       body["status"] == "success" and cmds and cmds[0]["params"].get("connectionKey") == KEY, body)
 check("B2. connection removed", agent_connections() == [], agent_connections())
 
-# --- B3. Without canvas_state: a connection the agent made itself is still removed ---
+# --- B3. Without canvas_state: a connection the agent made itself has no frontend
+# connectionKey, so the disconnect fails safely instead of sending a names-only command ---
+NO_KEY_MESSAGE = ("Cannot disconnect ESP32 from Relay Module because the connection cannot be identified: "
+                  "the current canvas connection key is unavailable.")
 context_engine.clear()
 client.post("/api/agent/chat", json={"command": "Add ESP32 and Relay Module"})
 chat("Connect ESP32 to Relay Module", "connect_components", "ESP32", "Relay Module")
 body = chat("Disconnect ESP32 from Relay Module", "disconnect_components", "ESP32", "Relay Module")
-cmds = disconnect_commands(body)
-check("B3. no canvas_state: disconnect -> success", body["status"] == "success" and len(cmds) == 1, body)
-check("B3. no canvas_state: no connectionKey invented", cmds and "connectionKey" not in cmds[0]["params"], cmds)
-check("B3. no canvas_state: connection removed", agent_connections() == [], agent_connections())
+check("B3. no canvas_state: disconnect -> status error", body["status"] == "error", body)
+check("B3. no canvas_state: clear message", body["message"] == NO_KEY_MESSAGE, body["message"])
+check("B3. no canvas_state: no disconnect command sent", disconnect_commands(body) == [], body.get("commands"))
+check("B3. no canvas_state: connection kept in agent memory", len(agent_connections()) == 1, agent_connections())
 
 # --- C. Disconnect again -> error, the connection no longer exists ---
 body = chat("Disconnect ESP32 from Relay Module", "disconnect_components", "ESP32", "Relay Module", NOT_CONNECTED)
@@ -130,6 +133,32 @@ body = chat("Disconnect ESP32 from Temperature Sensor", "disconnect_components",
 check("ambiguous -> status error with needs_clarification", body["status"] == "error" and body.get("needs_clarification") is True, body)
 check("ambiguous -> no disconnect command sent", disconnect_commands(body) == [], body.get("commands"))
 check("ambiguous -> connection not removed", len(agent_connections()) == 1, agent_connections())
+
+# --- E. Valid connection with a real connectionKey -> command carries the key and IDs ---
+context_engine.clear()
+body = chat("Disconnect ESP32 from Relay Module", "disconnect_components", "ESP32", "Relay Module", CONNECTED)
+cmds = disconnect_commands(body)
+check("E. real connectionKey -> exactly one disconnect command", body["status"] == "success" and len(cmds) == 1, body)
+check("E. command has the exact key and IDs",
+      cmds and cmds[0]["params"] == {"sourceComponentId": "ESP32", "targetComponentId": "Relay Module",
+                                     "sourceId": ESP32_ID, "targetId": RELAY_ID, "connectionKey": KEY}, cmds)
+check("E. success message does not claim the IDE executed it", body["message"] == "Command generated successfully", body["message"])
+
+# --- F. Synced connection whose connectionKey is missing -> error, no command, connection kept ---
+context_engine.clear()
+NO_KEY = canvas([{"connectionKey": None, "sourceId": ESP32_ID, "targetId": RELAY_ID}])
+body = chat("Disconnect ESP32 from Relay Module", "disconnect_components", "ESP32", "Relay Module", NO_KEY)
+check("F. missing connectionKey -> status error", body["status"] == "error", body)
+check("F. clear message", body["message"] == NO_KEY_MESSAGE, body["message"])
+check("F. no command at all", body.get("commands") == [], body.get("commands"))
+check("F. failed disconnect leaves the connection in agent memory", len(agent_connections()) == 1, agent_connections())
+
+# --- G. Nonexistent connection -> error, no command ---
+context_engine.clear()
+body = chat("Disconnect ESP32 from Relay Module", "disconnect_components", "ESP32", "Relay Module", NOT_CONNECTED)
+check("G. nonexistent connection -> status error",
+      body["status"] == "error" and body["message"] == "Cannot disconnect ESP32 from Relay Module because they are not connected.", body)
+check("G. no command at all", body.get("commands") == [], body.get("commands"))
 
 context_engine.clear()
 print(f"\n{passed} passed, {failed} failed")

@@ -92,14 +92,23 @@ class ConnectTool:
             source_component,
             target_component,
         )
+        # The frontend removes a connection only by its own connectionKey, so a
+        # command without the exact key it synced (from canvas_state) can't be
+        # applied - fail here instead of sending a names-only command that
+        # would be reported as success while the wire stays on the canvas.
+        connection_key = context_engine.find_connection_key(source_component, target_component)
+        if connection_key is None:
+            error = (
+                f"Cannot disconnect {source_component} from {target_component} because the connection "
+                "cannot be identified: the current canvas connection key is unavailable."
+            )
+            logger.warning("disconnect_components not sent: %s", error)
+            return {"success": False, "error": error}
+
         payload = _with_instance_ids(
             {"sourceComponentId": source_component, "targetComponentId": target_component},
             source_component,
             target_component,
         )
-        # The frontend removes a connection by its own connectionKey, so pass
-        # the exact key it synced (when the connection came from canvas_state).
-        connection_key = context_engine.find_connection_key(source_component, target_component)
-        if connection_key is not None:
-            payload["connectionKey"] = connection_key
+        payload["connectionKey"] = connection_key
         return self._dispatch("disconnectComponents", payload, mock_result={})

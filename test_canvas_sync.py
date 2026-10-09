@@ -198,7 +198,7 @@ check("6. empty canvas_state -> empty context", body["results"][0]["result"]["sy
 context_engine.clear()
 baseline = {
     "status": "success",
-    "message": "Command executed successfully",
+    "message": "Command generated successfully",
     "commands": [{"method": "canvas.addComponent", "params": {"componentId": "ESP32", "position": {"x": 200, "y": 200}}}],
     "results": [
         {"tool": "search_component", "status": "success", "result": {"success": True, "component": {"id": "esp32", "name": "ESP32"}}},
