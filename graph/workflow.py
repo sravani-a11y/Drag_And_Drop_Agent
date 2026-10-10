@@ -36,7 +36,7 @@ from typing import Any, Dict, List, Optional, TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from bridge import clear_recorded_commands, get_recorded_commands
-from clarifier import resolve_unplanned
+from clarifier import is_social_message, resolve_unplanned
 from context import context_engine
 from knowledge_loader import KnowledgeLoader
 from llm import LLMResponseError, analyze
@@ -182,6 +182,14 @@ def intent_agent(state: WorkflowState) -> Dict[str, Any]:
     except Exception:
         logger.exception("[Intent Agent] failed to load knowledge")
         return {"status": "failed", "error": "The component catalog could not be loaded. Please try again later."}
+
+    if is_social_message(user_request, knowledge):
+        # A greeting or thanks with no canvas request is answered without the
+        # LLM, which has been seen to read "hi" as get_canvas_state. The empty
+        # intent plans nothing, so the Planner hands it to the Clarifier's
+        # friendly reply.
+        logger.info("[Intent Agent] greeting/social message, no LLM call: %r", user_request)
+        return {"knowledge": knowledge, "intent": {}, "llm_output": {}, "components": []}
 
     if is_pure_add_request(user_request):
         components = extract_and_resolve_components(user_request, knowledge)

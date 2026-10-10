@@ -280,6 +280,81 @@ r = client.post("/api/agent/chat", json={"command": "   "})
 check("6e. validation error -> 400 with reply fields",
       r.status_code == 400 and r.json() == {"status": "error", "message": "Command is required", "reply_type": "error", "needs_clarification": False}, r.text)
 
+# --- 8. Greetings even when the LLM guesses a canvas intent (the live model reads "hi" as get_canvas_state) ---
+llm_calls = []
+
+
+def chat_counting(command, llm_answer):
+    """chat(), recording whether the (fixed-answer) LLM was consulted."""
+    answer = {"intent": "", "component": "", "components": [], "source_component": "",
+              "target_component": "", "confidence": "high", "reasoning": "test", **llm_answer}
+
+    def analyze(prompt, user_request):
+        llm_calls.append(user_request)
+        return dict(answer)
+
+    workflow.analyze = analyze
+    try:
+        result = client.post("/api/agent/chat", json={"command": command}).json()
+        all_bodies.append(result)
+        return result
+    finally:
+        workflow.analyze = _real_analyze
+
+
+def is_greeting_reply(body):
+    return (body["status"] == "success" and body["reply_type"] == "info" and body["needs_clarification"] is False
+            and body["commands"] == [] and body["message"].endswith(f"I can help you build your circuit on the canvas. {EXAMPLES}"))
+
+
+EXAMPLES = 'Try "Add ESP32", "Connect ESP32 to Relay Module" or "Show canvas".'
+
+context_engine.clear()
+llm_calls.clear()
+body = chat_counting("hi", {"intent": "get_canvas_state"})
+check("8a. 'hi' with LLM predicting get_canvas_state -> friendly greeting, no canvas command", is_greeting_reply(body), body)
+check("8a. 'hi' -> starts with 'Hi!'", body["message"].startswith("Hi! "), body["message"])
+check("8a. greeting answered without consulting the LLM", llm_calls == [], llm_calls)
+
+body = chat_counting("hello", {"intent": "add_component", "components": ["ESP32"]})
+check("8b. 'hello' with LLM predicting add_component -> friendly greeting, nothing added", is_greeting_reply(body), body)
+
+for text in ("HI", "  hi  ", "Hello!", "  HEY ", "Good Morning", "good   evening", "thanks", "THANKS!", "Thank you",
+             "Hi Hema, how are you today?"):
+    body = chat_counting(text, {"intent": "get_canvas_state"})
+    check(f"8c. {text!r} -> friendly greeting", is_greeting_reply(body), body)
+
+llm_calls.clear()
+body = chat_counting("show canvas", {"intent": "get_canvas_state"})
+check("8d. 'show canvas' -> normal canvas operation", body["status"] == "success" and methods(body) == ["canvas.getState"], body)
+check("8d. 'show canvas' still goes through the LLM", llm_calls == ["show canvas"], llm_calls)
+body = chat_counting("hello, show me the canvas", {"intent": "get_canvas_state"})
+check("8d. greeting + canvas request -> normal canvas operation", methods(body) == ["canvas.getState"], body)
+
+context_engine.clear()
+plain = chat_counting("add a resistor", {"intent": "add_component", "components": ["Resistor"]})
+for text in ("hi, add a resistor", "HI, ADD A RESISTOR", "  Hello  add a resistor "):
+    context_engine.clear()
+    body = chat_counting(text, {"intent": "add_component", "components": ["Resistor"]})
+    check(f"8e. {text!r} -> same plan as 'add a resistor' (no 'Hi' component)",
+          body["status"] == "success" and body["commands"] == plain["commands"], (body["commands"], plain["commands"]))
+
+context_engine.clear()
+plain = chat_counting("add a capacitor", {"intent": "add_component", "components": ["Capacitor"]})
+for text in ("thanks, add a capacitor", "thanks, now add a capacitor", "Thank you, please add a capacitor"):
+    context_engine.clear()
+    body = chat_counting(text, {"intent": "add_component", "components": ["Capacitor"]})
+    check(f"8f. {text!r} -> same plan as 'add a capacitor' (no 'Thanks' component)",
+          body["status"] == "success" and body["commands"] == plain["commands"], (body["commands"], plain["commands"]))
+
+context_engine.clear()
+body = chat_counting("hi, connect ESP32 to Relay Module",
+                     {"intent": "connect_components", "source_component": "ESP32", "target_component": "Relay Module"})
+check("8g. greeting + connect request -> normal planning (not swallowed)",
+      not is_greeting_reply(body) and ("canvas.connectComponents" in methods(body) or "not found" in body["message"]), body)
+body = chat_counting("hi ESP32", {"intent": "get_canvas_state"})
+check("8g. greeting + component name -> not treated as a greeting", not is_greeting_reply(body), body)
+
 # --- 7. Every response: reply_type is valid and needs_clarification always agrees with it ---
 check("7. reply_type always present and valid", all(b.get("reply_type") in ("info", "question", "error") for b in all_bodies),
       [b for b in all_bodies if b.get("reply_type") not in ("info", "question", "error")])

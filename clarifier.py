@@ -26,6 +26,7 @@ from context import AmbiguousComponentError, ComponentNotFoundError, context_eng
 from planner import (
     _ADD_ACTION_WORDS,
     _CONNECT_ACTION_WORDS,
+    _OTHER_OPERATION_WORDS,
     _detect_clause_intent,
     _find_components_in_text,
     _known_component_names,
@@ -34,6 +35,12 @@ from planner import (
 
 _EXAMPLES = 'Try "Add ESP32", "Connect ESP32 to Relay Module" or "Show canvas".'
 _GREETING = re.compile(r"^\W*(?:hi|hello|hey|hii+|good (?:morning|afternoon|evening))\b", re.IGNORECASE)
+
+# A message opening with a greeting or thanks - see is_social_message().
+_SOCIAL_OPENER = re.compile(
+    r"^\W*(?:hi+|hello|hey|hiya|good\s+(?:morning|afternoon|evening)|thanks|thank\s+you|thx)\b", re.IGNORECASE
+)
+_CANVAS_WORD = re.compile(r"\bcanvas\b", re.IGNORECASE)
 
 # Greeting and politeness words that can come before a command ("Hi, please
 # connect ...", "Could you add ..."), stripped before looking for a leading verb.
@@ -56,6 +63,23 @@ _VERBS = {
     "connect_components": "connect",
     "disconnect_components": "disconnect",
 }
+
+
+def is_social_message(user_request: str, knowledge: Dict[str, Any]) -> bool:
+    """Whether the message is only a greeting or thanks ("hi", "Good morning", "thanks!"), with no canvas request.
+
+    Decided from the text alone, never from the LLM - the live model has
+    read "hi" as get_canvas_state. Deliberately conservative: an action word
+    anywhere (add, connect, show, remove, ...), the word "canvas", or a
+    catalog component name makes it a request, so "hi, add a resistor" and
+    "thanks, now add a capacitor" are still planned normally.
+    """
+    text = user_request or ""
+    if not _SOCIAL_OPENER.match(text):
+        return False
+    if any(pattern.search(text) for pattern in (_ADD_ACTION_WORDS, _CONNECT_ACTION_WORDS, _OTHER_OPERATION_WORDS, _CANVAS_WORD)):
+        return False
+    return not _find_components_in_text(text, _known_component_names(knowledge))
 
 
 def _is_command(user_request: str, knowledge: Dict[str, Any]) -> bool:

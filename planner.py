@@ -673,6 +673,15 @@ _ADD_ACTION_WORDS = re.compile(
 _AND_SEPARATOR = re.compile(r"\band\b", re.IGNORECASE)
 _TRAILING_PUNCTUATION = re.compile(r"[.,!?]+$")
 
+# Greeting/politeness words at the very start of a request ("hi, add ...",
+# "thanks, now add ..."). They aren't component names, so extract_components()
+# drops them before splitting - otherwise "hi" becomes a component called "Hi".
+_LEADING_GREETING = re.compile(
+    r"^\W*(?:(?:hi+|hello|hey|hiya|good\s+(?:morning|afternoon|evening)|thanks|thank\s+you|thx"
+    r"|ok|okay|now|then|please|pls|kindly)\b\W*)+",
+    re.IGNORECASE,
+)
+
 # Recognizes "connect"/"link"/"attach"/"wire" and their common inflections
 # (matters for e.g. "connected", which _detect_add_and_connect() below and
 # is_pure_add_request() both need to recognize as the same verb as
@@ -712,12 +721,13 @@ def extract_components(user_input: str) -> List[str]:
     Lowercases the text, treats "and" the same as "," (both just separate
     one component name from the next), strips add-type action words, then
     splits on "," and cleans each piece. No catalog lookup and no LLM call -
-    a request naming N components always yields N names.
+    a request naming N components always yields N names. A leading greeting
+    ("hi, add ...") is dropped first - see _LEADING_GREETING.
     """
     if not user_input:
         return []
 
-    text = _AND_SEPARATOR.sub(",", user_input.lower())
+    text = _AND_SEPARATOR.sub(",", _LEADING_GREETING.sub("", user_input).lower())
     text = _ADD_ACTION_WORDS.sub("", text)
 
     components = []
