@@ -17,13 +17,15 @@ being up.
 import logging
 import os
 import threading
+from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
-from api.models import ChatResponse, ExecuteRequest, HealthResponse, VoiceResponse
+from api.models import CanvasState, ChatResponse, ExecuteRequest, HealthResponse, VoiceResponse
 from context import context_engine
 from graph import run_workflow
 
@@ -71,19 +73,47 @@ def _agent_response_from_workflow(result: dict) -> dict:
     completed = result.get("status") == "completed"
     commands = result.get("mcp_commands", [])
     if completed:
-        message = "Command generated successfully" if commands else "Request completed successfully"
+        # A completed request is "info": commands were generated, or (a
+        # greeting) there was nothing to do - never an operational failure.
+        reply_type = "info"
+        message = result.get("reply") or ("Command generated successfully" if commands else "Request completed successfully")
     else:
+        failed_step = (result.get("verification_result") or {}).get("failed_step") or {}
+        asks = failed_step.get("needs_clarification") or result.get("needs_clarification")
+        reply_type = result.get("reply_type") or ("question" if asks else "error")
         message = result.get("error") or "Command execution failed"
-    response = {
+    return {
         "status": "success" if completed else "error",
         "message": message,
         "commands": commands,
         "results": result.get("tool_results", []),
+        **_reply_fields(reply_type),
     }
-    failed_step = (result.get("verification_result") or {}).get("failed_step") or {}
-    if not completed and failed_step.get("needs_clarification"):
-        response["needs_clarification"] = True
-    return response
+
+
+def _reply_fields(reply_type: str) -> dict:
+    """reply_type plus the needs_clarification flag that always agrees with it."""
+    return {"reply_type": reply_type, "needs_clarification": reply_type == "question"}
+
+
+def _error_body(message: str) -> dict:
+    return {"status": "error", "message": message, **_reply_fields("error")}
+
+
+def _run_with_canvas(command: str, canvas_state: Optional[CanvasState], endpoint: str) -> dict:
+    """Sync canvas_state (when given) into the Context Engine, then run the workflow - as one locked unit."""
+    with _workflow_lock:
+        if canvas_state is not None:
+            # The frontend's canvas is the source of truth for this request.
+            summary = context_engine.sync_from_canvas(canvas_state.model_dump())
+            logger.info("[%s] canvas_state synced: %s", endpoint, summary)
+        else:
+            logger.warning(
+                "[%s] request has no canvas_state - using the agent's own memory, "
+                "which may not match the frontend canvas (disconnect cannot be targeted)",
+                endpoint,
+            )
+        return run_workflow(command)
 
 
 @app.exception_handler(RequestValidationError)
@@ -92,20 +122,20 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     errors = exc.errors()
     raw_message = errors[0]["msg"] if errors else "Invalid request"
     message = raw_message.split("Value error, ", 1)[-1] if raw_message.startswith("Value error, ") else raw_message
-    return JSONResponse(status_code=400, content={"status": "error", "message": message or "Invalid request"})
+    return JSONResponse(status_code=400, content=_error_body(message or "Invalid request"))
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Reshape FastAPI's default {"detail": ...} HTTP error into {"status", "message"}."""
-    return JSONResponse(status_code=exc.status_code, content={"status": "error", "message": str(exc.detail)})
+    return JSONResponse(status_code=exc.status_code, content=_error_body(str(exc.detail)))
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Catch anything unexpected: log the real traceback server-side, never send it to the client."""
     logger.exception("Unhandled error while handling %s %s", request.method, request.url.path)
-    return JSONResponse(status_code=500, content={"status": "error", "message": "Internal server error"})
+    return JSONResponse(status_code=500, content=_error_body("Internal server error"))
 
 
 @app.get("/api/health", response_model=HealthResponse)
@@ -122,22 +152,12 @@ def execute_command(request: ExecuteRequest) -> dict:
     validation error is caught by validation_exception_handler() above.
     """
     logger.info("[/api/agent/chat] command=%r", request.command)
-    with _workflow_lock:
-        if request.canvas_state is not None:
-            # The frontend's canvas is the source of truth for this request.
-            summary = context_engine.sync_from_canvas(request.canvas_state.model_dump())
-            logger.info("[/api/agent/chat] canvas_state synced: %s", summary)
-        else:
-            logger.warning(
-                "[/api/agent/chat] request has no canvas_state - using the agent's own memory, "
-                "which may not match the frontend canvas (disconnect cannot be targeted)"
-            )
-        result = run_workflow(request.command)
+    result = _run_with_canvas(request.command, request.canvas_state, "/api/agent/chat")
     return _agent_response_from_workflow(result)
 
 
 @app.post("/api/agent/voice", response_model=VoiceResponse)
-async def execute_voice_command(audio: UploadFile) -> dict:
+async def execute_voice_command(audio: UploadFile, canvas_state: Optional[str] = Form(None)) -> Any:
     """Transcribe an uploaded audio clip, normalize it, then run it through the same agent.
 
         Audio -> Speech-to-Text -> Command Normalization -> LangGraph
@@ -148,16 +168,31 @@ async def execute_voice_command(audio: UploadFile) -> dict:
     speech-recognition artifacts in component names against the real
     catalog (e.g. "NSP" -> "ESP32"); it never touches LangGraph, the
     Planner, the Executor, the Verifier, or the MCP Bridge.
+
+    canvas_state is optional, like chat's: the same JSON object, sent as a
+    string in the multipart form field "canvas_state". It is validated
+    before the audio is transcribed, and synced right before the workflow runs.
     """
     from command_normalizer import UnresolvedComponentError, normalize_command
     from voice_input import transcribe_audio_bytes
+
+    canvas = None
+    if canvas_state is not None and canvas_state.strip():
+        try:
+            canvas = CanvasState.model_validate_json(canvas_state)
+        except ValidationError as exc:
+            logger.warning("[/api/agent/voice] invalid canvas_state: %s", exc.errors()[:1])
+            return JSONResponse(
+                status_code=400,
+                content=_error_body("Invalid canvas_state: send the same JSON object as the chat API's canvas_state."),
+            )
 
     audio_bytes = await audio.read()
     transcript = transcribe_audio_bytes(audio_bytes)
 
     if not transcript:
         logger.warning("[/api/agent/voice] transcription failed for upload %r", audio.filename)
-        return {"status": "error", "message": "Unable to transcribe audio"}
+        return _error_body("Unable to transcribe audio")
 
     try:
         normalized_command = normalize_command(transcript)
@@ -167,7 +202,7 @@ async def execute_voice_command(audio: UploadFile) -> dict:
         # confident match - stop here, before run_workflow()/the Planner
         # ever runs, rather than invent a component from a guess.
         logger.warning("[/api/agent/voice] could not confidently resolve %r in transcript: %r", exc.unresolved_terms, transcript)
-        return {"status": "error", "message": "Could not confidently identify component. Please repeat.", "transcript": transcript}
+        return {**_error_body("Could not confidently identify component. Please repeat."), "transcript": transcript}
 
     logger.info("Original transcript: %s", transcript)
     logger.info("Normalized command: %s", normalized_command)
@@ -179,10 +214,9 @@ async def execute_voice_command(audio: UploadFile) -> dict:
         # here, before run_workflow()/the Planner ever runs, instead of
         # executing whatever a "best effort" correction would have guessed.
         logger.warning("[/api/agent/voice] rejected a severely repetitive/corrupted transcript: %r", transcript)
-        return {"status": "error", "message": "Speech not understood", "transcript": transcript}
+        return {**_error_body("Speech not understood"), "transcript": transcript}
 
-    with _workflow_lock:
-        result = run_workflow(normalized_command)
+    result = _run_with_canvas(normalized_command, canvas, "/api/agent/voice")
     response = _agent_response_from_workflow(result)
     response["transcript"] = transcript
     response["normalized_command"] = normalized_command

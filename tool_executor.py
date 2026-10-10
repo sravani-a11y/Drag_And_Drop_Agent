@@ -91,6 +91,34 @@ class ToolExecutor:
     def _join(names: List[Any]) -> str:
         return " and ".join(str(name) for name in names)
 
+    @staticmethod
+    def _join_options(labels: List[str]) -> str:
+        return labels[0] if len(labels) == 1 else f"{', '.join(labels[:-1])} or {labels[-1]}"
+
+    @staticmethod
+    def _name(reference: Any) -> Any:
+        """A readable name for a step's component reference: its label when it names exactly one component."""
+        labels = context_engine.matching_labels(reference)
+        return labels[0] if len(labels) == 1 else reference
+
+    @staticmethod
+    def _safe_error(tool_name: str, exc: Exception) -> str:
+        """The message for a tool/sync exception, safe to show the user.
+
+        A ValueError keeps its own text (the Context Engine's user-facing
+        rejections). Timeouts and connection errors get fixed wording that
+        verification.py still classifies as retryable. Anything else gets a
+        generic message - unexpected exception text can expose internals and
+        is only logged.
+        """
+        if isinstance(exc, ValueError):
+            return str(exc)
+        if isinstance(exc, TimeoutError):
+            return f"{tool_name} timed out."
+        if isinstance(exc, ConnectionError):
+            return f"{tool_name} failed: the service is temporarily unavailable."
+        return f"{tool_name} failed because of an internal error."
+
     def _precheck(self, tool_name: str, input_value: Any) -> Optional[StepResult]:
         """Check, before the tool runs, that the components (and connection) a step needs exist.
 
@@ -101,14 +129,14 @@ class ToolExecutor:
         """
         if tool_name == "connect_components":
             source, target = input_value["source_component"], input_value["target_component"]
-            action, references = f"connect {source} to {target}", [source, target]
+            action, references = f"connect {self._name(source)} to {self._name(target)}", [source, target]
         elif tool_name == "disconnect_components":
             source, target = input_value["source_component"], input_value["target_component"]
-            action, references = f"disconnect {source} from {target}", [source, target]
+            action, references = f"disconnect {self._name(source)} from {self._name(target)}", [source, target]
         elif tool_name == "move_component":
-            action, references = f"move {input_value['component_id']}", [input_value["component_id"]]
+            action, references = f"move {self._name(input_value['component_id'])}", [input_value["component_id"]]
         elif tool_name == "delete_component":
-            action, references = f"remove {input_value}", [input_value]
+            action, references = f"remove {self._name(input_value)}", [input_value]
         else:
             return None
 
@@ -116,10 +144,11 @@ class ToolExecutor:
         for reference in references:
             try:
                 context_engine.resolve_component(reference)
-            except AmbiguousComponentError as exc:
+            except AmbiguousComponentError:
+                labels = context_engine.matching_labels(reference)
                 message = (
-                    f"Cannot {action} because {len(exc.instance_ids)} components match {reference!r} on the canvas "
-                    f"(instance ids {exc.instance_ids}). Please specify which one."
+                    f"Cannot {action} because {len(labels)} components match {reference!r} on the canvas: "
+                    f"{self._join_options(labels)}. Which one do you mean?"
                 )
                 logger.warning("Tool %s not run: %s", tool_name, message)
                 return {"tool": tool_name, "status": "failed", "error": message, "needs_clarification": True}
@@ -163,8 +192,8 @@ class ToolExecutor:
         try:
             sync(input_value)
         except Exception as exc:
-            logger.error("Context Engine sync failed for %s: %s", tool_name, exc)
-            return str(exc)
+            logger.exception("Context Engine sync failed for %s", tool_name)
+            return self._safe_error(tool_name, exc)
         return None
 
     @staticmethod
@@ -208,10 +237,19 @@ class ToolExecutor:
             return failed
 
         try:
+            if tool_name == "add_component" and isinstance(input_value, dict):
+                # The Planner only knows a default spot; move it to a free one so a
+                # new component never lands on top of one already on the canvas.
+                # Both the command and the Context Engine sync use the new position.
+                position = context_engine.find_free_position(input_value["x"], input_value["y"])
+                if (position["x"], position["y"]) != (input_value["x"], input_value["y"]):
+                    logger.info("add_component %r moved to free position %s", input_value.get("component_id"), position)
+                    input_value = {**input_value, **position}
+
             result = self._invoke(handler, input_value)
         except Exception as exc:
-            logger.error("Tool execution failed: %s - %s", tool_name, exc)
-            return {"tool": tool_name, "status": "failed", "error": str(exc)}
+            logger.exception("Tool execution failed: %s", tool_name)
+            return {"tool": tool_name, "status": "failed", "error": self._safe_error(tool_name, exc)}
 
         if isinstance(result, dict) and result.get("success") is False:
             error = result.get("error") or f"{tool_name} failed"

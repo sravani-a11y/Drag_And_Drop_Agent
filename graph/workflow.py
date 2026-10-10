@@ -36,6 +36,7 @@ from typing import Any, Dict, List, Optional, TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from bridge import clear_recorded_commands, get_recorded_commands
+from clarifier import resolve_unplanned
 from context import context_engine
 from knowledge_loader import KnowledgeLoader
 from llm import LLMResponseError, analyze
@@ -93,6 +94,15 @@ class WorkflowState(TypedDict, total=False):
         context: A context_engine.get_context() snapshot, taken at the end.
         status: "completed" or "failed" once the workflow finishes.
         error: A human-readable error message, set only when status == "failed".
+        needs_clarification: True when no plan could be made and `error` is
+            a question for the user (e.g. "Connect ESP32 to which component?").
+        reply_type: Set by the Planner Agent when the Clarifier answered
+            instead of a normal plan: "info" (not a canvas command - status
+            still ends "completed", nothing to execute), "question" or
+            "error" (status "failed", `error` holds the message).
+        reply: The message to show instead of the default one when the
+            workflow completes - an "info" reply, or what an automatic
+            choice did ("Generated a command to disconnect ESP32 from ...").
     """
 
     user_request: str
@@ -113,6 +123,9 @@ class WorkflowState(TypedDict, total=False):
     context: Dict[str, Any]
     status: str
     error: Optional[str]
+    needs_clarification: bool
+    reply_type: str
+    reply: Optional[str]
 
 
 # One shared ToolExecutor instance for this graph, mirroring main.py's own
@@ -166,9 +179,9 @@ def intent_agent(state: WorkflowState) -> Dict[str, Any]:
 
     try:
         knowledge = KnowledgeLoader().load_all()
-    except Exception as exc:
-        logger.error("[Intent Agent] failed to load knowledge: %s", exc)
-        return {"status": "failed", "error": f"Failed to load knowledge: {exc}"}
+    except Exception:
+        logger.exception("[Intent Agent] failed to load knowledge")
+        return {"status": "failed", "error": "The component catalog could not be loaded. Please try again later."}
 
     if is_pure_add_request(user_request):
         components = extract_and_resolve_components(user_request, knowledge)
@@ -186,11 +199,17 @@ def intent_agent(state: WorkflowState) -> Dict[str, Any]:
         prompt = build_prompt(knowledge, user_request)
         llm_output = analyze(prompt, user_request)
     except LLMResponseError as exc:
+        # Exception text (raw model output, parser details) is only logged:
+        # the user gets a fixed message, never internals.
         logger.error("[Intent Agent] LLM response error: %s", exc)
-        return {"knowledge": knowledge, "status": "failed", "error": f"LLM response error: {exc}"}
-    except Exception as exc:
-        logger.error("[Intent Agent] unexpected error calling the LLM: %s", exc)
-        return {"knowledge": knowledge, "status": "failed", "error": f"Unexpected error while calling the LLM: {exc}"}
+        return {"knowledge": knowledge, "status": "failed", "error": "I couldn't understand that request. Please rephrase it."}
+    except Exception:
+        logger.exception("[Intent Agent] unexpected error calling the LLM")
+        return {
+            "knowledge": knowledge,
+            "status": "failed",
+            "error": "The language service is unavailable right now. Please try again in a moment.",
+        }
 
     components = _components_from_intent(llm_output)
     logger.info("[Intent Agent] understood via LLM: intent=%s components=%s", llm_output, components)
@@ -274,21 +293,44 @@ def planner_agent(state: WorkflowState) -> Dict[str, Any]:
             plan = _plan_multi_intent(actions)
         else:
             plan = create_plan(intent, user_request=state.get("user_request", ""), knowledge=state.get("knowledge"))
-    except Exception as exc:
-        logger.error("[Planner Agent] failed to build a plan: %s", exc)
-        return {"status": "failed", "error": f"Failed to create execution plan: {exc}"}
+    except Exception:
+        logger.exception("[Planner Agent] failed to build a plan")
+        return {"status": "failed", "error": "Something went wrong while planning this request. Please try again."}
 
+    reply = None
     if not plan:
-        logger.warning("[Planner Agent] no execution plan could be created for: %s", intent)
-        return {
-            "execution_plan": [],
-            "current_step_index": 0,
-            "status": "failed",
-            "error": "No execution plan could be created for this request.",
-        }
+        # Small talk, or a command with something missing: the Clarifier
+        # either finds the plan after all (e.g. the one wire to disconnect)
+        # or explains what's needed, instead of a bare "no plan" error.
+        try:
+            outcome = resolve_unplanned(state.get("user_request", ""), intent, state.get("knowledge"))
+        except Exception:
+            logger.exception("[Planner Agent] clarifier failed for: %s", intent)
+            outcome = {}
+        plan = outcome.get("plan") or []
+        reply = outcome.get("reply")
+
+        if not plan:
+            message = outcome.get("message") or "Something went wrong while understanding this request. Please try again."
+            reply_type = outcome.get("reply_type") or "error"
+            logger.info("[Planner Agent] no execution plan for: %s - replying (%s) %r", intent, reply_type, message)
+            if reply_type == "info":
+                # Not a canvas command: nothing to execute, and nothing failed.
+                return {"execution_plan": [], "current_step_index": 0, "reply": message, "reply_type": "info"}
+            return {
+                "execution_plan": [],
+                "current_step_index": 0,
+                "status": "failed",
+                "error": message,
+                "reply_type": reply_type,
+                "needs_clarification": reply_type == "question",
+            }
 
     logger.info("[Planner Agent] built plan with %d step(s): %s", len(plan), plan)
-    return {"execution_plan": plan, "current_step_index": 0}
+    update: Dict[str, Any] = {"execution_plan": plan, "current_step_index": 0}
+    if reply:
+        update["reply"] = reply
+    return update
 
 
 def executor_agent(state: WorkflowState) -> Dict[str, Any]:
@@ -312,9 +354,9 @@ def executor_agent(state: WorkflowState) -> Dict[str, Any]:
     commands_before = len(get_recorded_commands())
     try:
         results = _tool_executor.execute_plan(remaining)
-    except Exception as exc:
-        logger.error("[Executor Agent] failed to execute plan: %s", exc)
-        return {"status": "failed", "error": f"Failed to execute plan: {exc}"}
+    except Exception:
+        logger.exception("[Executor Agent] failed to execute plan")
+        return {"status": "failed", "error": "Something went wrong while running this request. Please try again."}
     new_commands = get_recorded_commands()[commands_before:]
 
     failed_step = None

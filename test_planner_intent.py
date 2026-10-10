@@ -1,17 +1,46 @@
 """Tests for the generalized add+connect intent/planning fix (planner.py's _detect_add_and_connect()).
 
-Plain script (matches test_knowledge_loader.py/test_llm.py's style, not
-pytest) - run with `python test_planner_intent.py`. Runs the varied
-natural-language commands through the real, unmodified LangGraph workflow
-(graph.run_workflow()) - some of these need a running local Ollama server
-(qwen2.5:7b) since they aren't pure-add requests, so this can take a few
-minutes end to end.
+Plain script (matches the other test_*.py files, not pytest) - run with
+`python test_planner_intent.py`. Runs the varied natural-language commands
+through the real LangGraph workflow (graph.run_workflow()).
+
+The requests that aren't a plain "add" go through the LLM. These tests
+check the Planner, not the model, so by default the LLM's answer is fixed
+per request (_LLM_ANSWERS, a realistic reply for each) - no network or
+OLLAMA_API_KEY needed. Set RUN_LIVE_LLM_TESTS=1 (with OLLAMA_API_KEY) to
+run them against the real LLM instead.
 """
 
+import os
+
+import graph.workflow as workflow
 from graph import run_workflow
 
 passed = 0
 failed = 0
+
+# The answer a well-behaved LLM gives for each non-"add" request below.
+_LLM_ANSWERS = {
+    "connect ESP32 to accelerometer": {"intent": "connect_components", "source_component": "ESP32", "target_component": "Accelerometer"},
+    "link ESP32 with accelerometer": {"intent": "connect_components", "source_component": "ESP32", "target_component": "Accelerometer"},
+    "add ESP32 and connect it to accelerometer": {"intent": "connect_components", "source_component": "ESP32", "target_component": "Accelerometer"},
+    "create ESP32 connected to accelerometer": {"intent": "connect_components", "source_component": "ESP32", "target_component": "Accelerometer"},
+    "move ESP32 to a new position": {"intent": "move_component", "component": "ESP32"},
+    "remove ESP32": {"intent": "remove_component", "component": "ESP32"},
+}
+
+
+def _fixed_llm_answer(prompt, user_request):
+    if user_request not in _LLM_ANSWERS:
+        raise AssertionError(f"test_planner_intent: no fixed LLM answer for {user_request!r} - add one to _LLM_ANSWERS")
+    return {"component": "", "components": [], "source_component": "", "target_component": "",
+            "confidence": "high", "reasoning": "fixed test answer", **_LLM_ANSWERS[user_request]}
+
+
+if os.environ.get("RUN_LIVE_LLM_TESTS") == "1" and os.environ.get("OLLAMA_API_KEY"):
+    print("Using the live LLM (RUN_LIVE_LLM_TESTS=1)")
+else:
+    workflow.analyze = _fixed_llm_answer
 
 
 def added_components(result):
@@ -49,6 +78,11 @@ check("2. ESP32 added", "ESP32" in added_components(r), added_components(r))
 r = run_workflow("add ESP32 and DHT11")
 check("3. add ESP32 and DHT11 -> completed", r.get("status") == "completed", r)
 check("3. both components added", added_components(r) == ["ESP32", "DHT11 Sensor"], added_components(r))
+
+# Connecting requires both components on the canvas (connecting to a missing
+# one is correctly an error), so put the Accelerometer there first.
+r = run_workflow("add accelerometer")
+check("4. setup: accelerometer added", r.get("status") == "completed", r.get("error"))
 
 r = run_workflow("connect ESP32 to accelerometer")
 check("4. connect ESP32 to accelerometer -> completed", r.get("status") == "completed", r)

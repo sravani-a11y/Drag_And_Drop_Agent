@@ -204,6 +204,8 @@ baseline = {
         {"tool": "search_component", "status": "success", "result": {"success": True, "component": {"id": "esp32", "name": "ESP32"}}},
         {"tool": "add_component", "status": "success", "result": {"success": True, "instanceId": 12345}},
     ],
+    "reply_type": "info",
+    "needs_clarification": False,
 }
 r = chat("Add ESP32")
 check("7. no canvas_state: 'Add ESP32' response identical to Phase 0 baseline", r.json() == baseline, json.dumps(r.json()))

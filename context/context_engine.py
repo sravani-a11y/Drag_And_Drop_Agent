@@ -275,6 +275,135 @@ def find_instance_id(component_reference: Any) -> Optional[Any]:
     return _session.components[matches[0]].get("instance_id")
 
 
+def connected_components(component_reference: Any) -> List[str]:
+    """Tracked keys of every component connected to the one `component_reference` names.
+
+    Keys rather than display names, so each one still names exactly one
+    component when two share a name ("Temperature Sensor [<id>]"). Raises
+    ComponentNotFoundError / AmbiguousComponentError as resolve_component()
+    does. Read-only.
+    """
+    key = resolve_component(component_reference)
+    partners = []
+    for connection in _session.connections.values():
+        if connection["source"] == key:
+            partners.append(connection["target"])
+        elif connection["target"] == key:
+            partners.append(connection["source"])
+    return partners
+
+
+def display_name(component_reference: Any) -> Any:
+    """The display name of the one component `component_reference` names, else the reference unchanged.
+
+    Turns an internal key ("Temperature Sensor [<id>]") back into the name
+    the frontend knows ("Temperature Sensor"). Never raises.
+    """
+    matches = _matching_keys(component_reference)
+    if len(matches) != 1:
+        return component_reference
+    return _session.components[matches[0]].get("display_name", matches[0])
+
+
+def component_label(key: str) -> str:
+    """A readable label for one tracked component, for messages shown to the user.
+
+    Just the display name when it's the only component with that name;
+    otherwise "<name> #<n> (id <instance id>, at x=<x>, y=<y>)", numbered
+    in canvas order, so two instances can be told apart.
+    """
+    metadata = _session.components.get(key, {})
+    name = metadata.get("display_name", key)
+    same_name = [k for k, m in _session.components.items() if str(m.get("display_name", k)).lower() == str(name).lower()]
+    if len(same_name) <= 1:
+        return name
+
+    details = []
+    if metadata.get("instance_id") is not None:
+        details.append(f"id {metadata['instance_id']}")
+    position = _session.component_positions.get(key) or {}
+    if position.get("x") is not None and position.get("y") is not None:
+        details.append(f"at x={position['x']}, y={position['y']}")
+    suffix = f" ({', '.join(details)})" if details else ""
+    return f"{name} #{same_name.index(key) + 1}{suffix}"
+
+
+def matching_labels(component_reference: Any) -> List[str]:
+    """component_label() of every tracked component `component_reference` names (several when ambiguous)."""
+    return [component_label(key) for key in _matching_keys(component_reference)]
+
+
+# The frontend creates a new component 100x100 and positions it by its
+# top-left corner (x, y); the same size is assumed for any component whose
+# size isn't known (e.g. one the agent added and the frontend hasn't synced).
+_DEFAULT_COMPONENT_SIZE = 100
+
+# Minimum empty space (px) kept between a new component and any other.
+_PLACEMENT_GAP = 50
+
+# Where find_free_position() looks when the requested spot is taken: up to
+# _PLACEMENT_COLUMNS spots to the right on the same row, then the same
+# spots on each row below, _PLACEMENT_STEP px apart. Rows continue until a
+# free spot is found - the canvas size isn't known, so there's no edge to
+# stop at, and below every existing component is always free.
+_PLACEMENT_STEP = 200
+_PLACEMENT_COLUMNS = 5
+
+
+def _size_or_default(value: Any) -> float:
+    return value if isinstance(value, (int, float)) and value > 0 else _DEFAULT_COMPONENT_SIZE
+
+
+def _occupied_boxes() -> List[tuple]:
+    """(x, y, width, height) of every tracked component with a known position."""
+    boxes = []
+    for key, position in _session.component_positions.items():
+        x, y = position.get("x"), position.get("y")
+        if not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
+            continue
+        size = _session.components.get(key, {}).get("size") or {}
+        boxes.append((x, y, _size_or_default(size.get("width")), _size_or_default(size.get("height"))))
+    return boxes
+
+
+def _overlaps(x: float, y: float, width: float, height: float, box: tuple) -> bool:
+    """Whether the rectangle at (x, y) comes within _PLACEMENT_GAP of `box`."""
+    box_x, box_y, box_width, box_height = box
+    return (
+        x < box_x + box_width + _PLACEMENT_GAP
+        and box_x < x + width + _PLACEMENT_GAP
+        and y < box_y + box_height + _PLACEMENT_GAP
+        and box_y < y + height + _PLACEMENT_GAP
+    )
+
+
+def find_free_position(
+    x: int, y: int, width: float = _DEFAULT_COMPONENT_SIZE, height: float = _DEFAULT_COMPONENT_SIZE
+) -> Dict[str, int]:
+    """(x, y) itself when a width x height component fits there, else the first free spot after it.
+
+    Every tracked component counts with its real size (from canvas_state)
+    or the default size. Always finds a spot: rows continue downward, and
+    a row below every existing component is free. Read-only.
+    """
+    boxes = _occupied_boxes()
+    lowest_edge = max((box_y + box_height for _, box_y, _, box_height in boxes), default=y)
+
+    row = 0
+    while True:
+        candidate_y = y + row * _PLACEMENT_STEP
+        for column in range(_PLACEMENT_COLUMNS):
+            candidate_x = x + column * _PLACEMENT_STEP
+            if not any(_overlaps(candidate_x, candidate_y, width, height, box) for box in boxes):
+                return {"x": candidate_x, "y": candidate_y}
+        if candidate_y > lowest_edge + _PLACEMENT_GAP:
+            # Unreachable: nothing extends below lowest_edge. Kept so a bug
+            # here can never loop forever.
+            logger.error("Context: placement search passed every component without a free spot at (%s, %s)", x, y)
+            return {"x": x, "y": candidate_y}
+        row += 1
+
+
 def sync_from_canvas(canvas_state: Dict[str, Any]) -> Dict[str, Any]:
     """Replace the tracked canvas with the frontend's current canvas (its active tab).
 

@@ -18,6 +18,14 @@ from context import context_engine
 logger = logging.getLogger(__name__)
 
 
+def _name_fields(source_component: str, target_component: str) -> Dict[str, Any]:
+    """The command's name fields, as display names - never an internal key like "Temperature Sensor [<id>]"."""
+    return {
+        "sourceComponentId": context_engine.display_name(source_component),
+        "targetComponentId": context_engine.display_name(target_component),
+    }
+
+
 def _with_instance_ids(payload: Dict[str, Any], source_component: str, target_component: str) -> Dict[str, Any]:
     """Add the frontend's sourceId/targetId to `payload` when both components are known canvas instances.
 
@@ -73,11 +81,7 @@ class ConnectTool:
         )
         return self._dispatch(
             "connectComponents",
-            _with_instance_ids(
-                {"sourceComponentId": source_component, "targetComponentId": target_component},
-                source_component,
-                target_component,
-            ),
+            _with_instance_ids(_name_fields(source_component, target_component), source_component, target_component),
             mock_result={"connectionId": "123-456"},
         )
 
@@ -98,17 +102,14 @@ class ConnectTool:
         # would be reported as success while the wire stays on the canvas.
         connection_key = context_engine.find_connection_key(source_component, target_component)
         if connection_key is None:
+            names = _name_fields(source_component, target_component)
             error = (
-                f"Cannot disconnect {source_component} from {target_component} because the connection "
-                "cannot be identified: the current canvas connection key is unavailable."
+                f"Cannot disconnect {names['sourceComponentId']} from {names['targetComponentId']} because the "
+                "connection cannot be identified: the current canvas connection key is unavailable."
             )
             logger.warning("disconnect_components not sent: %s", error)
             return {"success": False, "error": error}
 
-        payload = _with_instance_ids(
-            {"sourceComponentId": source_component, "targetComponentId": target_component},
-            source_component,
-            target_component,
-        )
+        payload = _with_instance_ids(_name_fields(source_component, target_component), source_component, target_component)
         payload["connectionKey"] = connection_key
         return self._dispatch("disconnectComponents", payload, mock_result={})

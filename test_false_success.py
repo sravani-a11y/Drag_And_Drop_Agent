@@ -73,7 +73,7 @@ body = r.json()
 check("1. connect missing LED -> status error", r.status_code == 200 and body["status"] == "error", body)
 check("1. clear message", body.get("message") == "Cannot connect LED to Buzzer because LED was not found.", body.get("message"))
 check("1. no connect command sent to the frontend", "canvas.connectComponents" not in methods(body), methods(body))
-check("1. not marked as a clarification", "needs_clarification" not in body, body)
+check("1. an error, not a clarification", body.get("reply_type") == "error" and body.get("needs_clarification") is False, body)
 check("1. no connection recorded", context_engine.get_context()["connections"] == {})
 
 # --- 1b. Same, without canvas_state (agent memory only) ---
@@ -132,7 +132,8 @@ body = chat("Remove Buzzer", {"intent": "remove_component", "components": ["Buzz
 check("5. remove existing -> success with id", body["status"] == "success" and body["commands"][0]["params"].get("id") == BUZZER_ID, body)
 context_engine.clear()
 body = chat("Add ESP32").json()
-check("5. add -> success, response shape unchanged", body["status"] == "success" and set(body) == {"status", "message", "commands", "results"}, body)
+check("5. add -> success, response shape (existing fields + reply_type/needs_clarification)",
+      body["status"] == "success" and set(body) == {"status", "message", "commands", "results", "reply_type", "needs_clarification"}, body)
 
 # --- 6. Ambiguous component -> error + needs_clarification, nothing chosen ---
 two_sensors = canvas([component(TEMP_A_ID, "Temperature Sensor", x=100), component(TEMP_B_ID, "Temperature Sensor", x=300),

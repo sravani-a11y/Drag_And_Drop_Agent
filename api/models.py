@@ -7,7 +7,7 @@ just because the existing MCP Bridge/ToolExecutor add a new field to what
 they already return.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, field_validator
 
@@ -39,7 +39,8 @@ class CanvasConnection(BaseModel):
 
 
 class CanvasState(BaseModel):
-    """The frontend's current canvas (active tab), sent with a chat request."""
+    """The frontend's current canvas (active tab), sent with a chat request (JSON body)
+    or a voice request (a JSON string in the multipart form field "canvas_state")."""
 
     tabId: Optional[int] = None
     tabName: Optional[str] = None
@@ -66,24 +67,36 @@ class ExecuteRequest(BaseModel):
         return value.strip()
 
 
+ReplyType = Literal["info", "question", "error"]
+
+
 class AgentResponse(BaseModel):
-    """Response shape shared by /api/agent/execute and (extended) /api/agent/voice."""
+    """Response shape shared by /api/agent/chat and (extended) /api/agent/voice.
+
+    reply_type says what kind of reply `message` is:
+        - "info": the request was handled - commands were generated, or it
+          wasn't a canvas command (a greeting) and there was nothing to do.
+          status is "success".
+        - "question": the agent needs more information ("Connect ESP32 to
+          which component?"). status is "error", nothing was done.
+        - "error": the request could not be completed. status is "error".
+    needs_clarification is true exactly when reply_type is "question".
+
+    Both are required: every response path sets them (api/server.py's
+    _reply_fields()), and a path that forgot would fail loudly in tests
+    instead of silently dropping them from the response.
+    """
 
     status: str
     message: Optional[str] = None
     commands: List[Dict[str, Any]] = []
     results: List[Dict[str, Any]] = []
+    reply_type: ReplyType
+    needs_clarification: bool
 
 
 class ChatResponse(AgentResponse):
-    """POST /api/agent/chat response - AgentResponse plus needs_clarification.
-
-    needs_clarification is only present (true) when the request named an
-    ambiguous component; status stays "error" in that case, so existing
-    clients keep working.
-    """
-
-    needs_clarification: Optional[bool] = None
+    """POST /api/agent/chat response (same fields as AgentResponse)."""
 
 
 class VoiceResponse(AgentResponse):
@@ -111,3 +124,5 @@ class ErrorResponse(BaseModel):
     status: str = "error"
     message: str
     results: List[Dict[str, Any]] = []
+    reply_type: ReplyType = "error"
+    needs_clarification: bool = False
