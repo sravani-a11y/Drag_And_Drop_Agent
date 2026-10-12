@@ -116,13 +116,53 @@ def _run_with_canvas(command: str, canvas_state: Optional[CanvasState], endpoint
         return run_workflow(command)
 
 
+def _field_path(loc: tuple, root: str = "") -> str:
+    """('body', 'canvas_state', 'components', 0, 'name') -> 'canvas_state.components[0].name'."""
+    path = root
+    for part in loc:
+        if part == "body" and not path:
+            continue
+        if isinstance(part, int):
+            path += f"[{part}]"
+        else:
+            path = f"{path}.{part}" if path else str(part)
+    return path
+
+
+def _describe_validation_errors(errors: list, label: str = "Invalid request", root: str = "") -> str:
+    """One readable message for a request that failed validation, naming the field that's wrong.
+
+    E.g. "Invalid request: canvas_state.components[0].name - Input should be
+    a valid string". A validator's own message ("Command is required") is
+    already readable and is returned as-is. Only the first error is described
+    in full; the rest are counted.
+    """
+    if not errors:
+        return label
+    error = errors[0]
+    message = error.get("msg") or "Invalid value"
+    if message.startswith("Value error, "):
+        return message.split("Value error, ", 1)[-1]
+
+    path = "" if error.get("type") == "json_invalid" else _field_path(tuple(error.get("loc", ())), root)
+    described = f"{label}: {path} - {message}" if path else f"{label}: {message}"
+    if len(errors) > 1:
+        described += f" (and {len(errors) - 1} more invalid field{'s' if len(errors) > 2 else ''})"
+    return described
+
+
+def _log_validation_errors(where: str, errors: list, root: str = "") -> None:
+    """Log which fields failed and why - never their values, which can hold user data."""
+    logger.warning("Request validation failed on %s: %s", where,
+                   [(_field_path(tuple(e.get("loc", ())), root), e.get("type")) for e in errors])
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    """Reshape FastAPI's default {"detail": [...]} validation error into {"status", "message"}."""
+    """Reshape FastAPI's default {"detail": [...]} validation error into {"status", "message"}, naming the bad field."""
     errors = exc.errors()
-    raw_message = errors[0]["msg"] if errors else "Invalid request"
-    message = raw_message.split("Value error, ", 1)[-1] if raw_message.startswith("Value error, ") else raw_message
-    return JSONResponse(status_code=400, content=_error_body(message or "Invalid request"))
+    _log_validation_errors(f"{request.method} {request.url.path}", errors)
+    return JSONResponse(status_code=400, content=_error_body(_describe_validation_errors(errors)))
 
 
 @app.exception_handler(HTTPException)
@@ -181,10 +221,11 @@ async def execute_voice_command(audio: UploadFile, canvas_state: Optional[str] =
         try:
             canvas = CanvasState.model_validate_json(canvas_state)
         except ValidationError as exc:
-            logger.warning("[/api/agent/voice] invalid canvas_state: %s", exc.errors()[:1])
+            errors = exc.errors()
+            _log_validation_errors("POST /api/agent/voice", errors, root="canvas_state")
             return JSONResponse(
                 status_code=400,
-                content=_error_body("Invalid canvas_state: send the same JSON object as the chat API's canvas_state."),
+                content=_error_body(_describe_validation_errors(errors, label="Invalid canvas_state", root="canvas_state")),
             )
 
     audio_bytes = await audio.read()

@@ -118,7 +118,11 @@ r = voice("Add ESP32", raw_canvas_state="{not json")
 check("4a. malformed canvas_state JSON -> 400 error reply", r.status_code == 400 and r.json()["reply_type"] == "error" and r.json()["needs_clarification"] is False, r.text)
 check("4a. audio not transcribed for a rejected request", transcribe_calls == [], transcribe_calls)
 r = voice("Add ESP32", raw_canvas_state=json.dumps({"components": [{"name": "ESP32"}]}))
-check("4b. canvas_state missing required fields -> 400", r.status_code == 400 and "Invalid canvas_state" in r.json()["message"], r.text)
+check("4b. canvas_state missing required fields -> 400 naming the first, counting the rest",
+      r.status_code == 400 and r.json()["message"] == "Invalid canvas_state: canvas_state.components[0].id - Field required (and 2 more invalid fields)", r.text)
+r = voice("Add ESP32", canvas_state={"components": [{"id": 1, "name": {"name": "ESP32"}, "x": 0, "y": 0}]})
+check("4b. wrongly typed field -> named, same wording as chat",
+      r.status_code == 400 and r.json()["message"] == "Invalid canvas_state: canvas_state.components[0].name - Input should be a valid string", r.text)
 r = voice("Add ESP32", raw_canvas_state="   ")
 check("4c. blank canvas_state treated as absent -> success", r.status_code == 200 and r.json()["status"] == "success", r.text)
 

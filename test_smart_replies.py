@@ -280,6 +280,44 @@ r = client.post("/api/agent/chat", json={"command": "   "})
 check("6e. validation error -> 400 with reply fields",
       r.status_code == 400 and r.json() == {"status": "error", "message": "Command is required", "reply_type": "error", "needs_clarification": False}, r.text)
 
+# 6f. A wrongly typed field is named in the message, and logged without its value.
+import logging
+
+log_lines = []
+
+
+class _Capture(logging.Handler):
+    def emit(self, record):
+        log_lines.append(record.getMessage())
+
+
+_capture = _Capture()
+logging.getLogger("api.server").addHandler(_capture)
+GOOD = {"id": 1, "name": "ESP32", "label": "ESP32", "x": 200, "y": 200}
+for label, canvas_state, expected in (
+    ("component name is the symbol object", canvas([{**GOOD, "name": {"name": "SECRET-SYMBOL"}}]),
+     "Invalid request: canvas_state.components[0].name - Input should be a valid string"),
+    ("connectionKey is a number", canvas([GOOD], [{"connectionKey": 12, "sourceId": 1, "targetId": 2}]),
+     "Invalid request: canvas_state.connections[0].connectionKey - Input should be a valid string"),
+    ("tabName is a number", {**canvas([GOOD]), "tabName": 7},
+     "Invalid request: canvas_state.tabName - Input should be a valid string"),
+    ("connections sent as plain strings", canvas([GOOD], ["1-2"]),
+     "Invalid request: canvas_state.connections[0] - Input should be a valid dictionary or object to extract fields from"),
+):
+    r = client.post("/api/agent/chat", json={"command": "Connect ESP32 to Relay Module", "canvas_state": canvas_state})
+    check(f"6f. {label} -> 400 naming the field", r.status_code == 400 and r.json()["message"] == expected, r.text)
+    check(f"6f. {label} -> reply fields", r.json().get("reply_type") == "error" and r.json().get("needs_clarification") is False, r.text)
+
+r = client.post("/api/agent/chat", json={"command": 5, "canvas_state": canvas([{**GOOD, "name": None}])})
+check("6g. several bad fields -> first named, rest counted",
+      r.status_code == 400 and r.json()["message"] == "Invalid request: command - Input should be a valid string (and 1 more invalid field)", r.text)
+r = client.post("/api/agent/chat", content=b"{bad json", headers={"content-type": "application/json"})
+check("6h. malformed JSON -> 400, no field path", r.status_code == 400 and r.json()["message"] == "Invalid request: JSON decode error", r.text)
+logging.getLogger("api.server").removeHandler(_capture)
+check("6i. validation failures logged with field paths",
+      any("canvas_state.components[0].name" in line and "string_type" in line for line in log_lines), log_lines)
+check("6i. logged without the submitted values", not any("SECRET-SYMBOL" in line for line in log_lines), log_lines)
+
 # --- 8. Greetings even when the LLM guesses a canvas intent (the live model reads "hi" as get_canvas_state) ---
 llm_calls = []
 

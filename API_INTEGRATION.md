@@ -207,7 +207,11 @@ Note this is still HTTP 200 — the request itself was valid, the *agent* just c
 ```json
 { "status": "error", "message": "Command is required", "reply_type": "error", "needs_clarification": false }
 ```
-Returned for a missing/blank `"command"`, malformed JSON, or an invalid `canvas_state`.
+Returned for a missing/blank `"command"`, malformed JSON, or an invalid `canvas_state`. When a field has the wrong type or is missing, `message` names it, e.g.:
+```json
+{ "status": "error", "message": "Invalid request: canvas_state.components[0].name - Input should be a valid string", "reply_type": "error", "needs_clarification": false }
+```
+Here `components[0].name` was sent as an object instead of text. Only the first bad field is named; any others are counted, e.g. `"... (and 2 more invalid fields)"`. Text fields: `command`, `tabName`, `name`, `label` (or `null`), `connectionKey`. Number fields: `id`, `x`, `y`, `width`, `height`, `rotation`, `sourceId`, `targetId`. `tabId` must be a whole number or `null`. `connections` must be objects (`{ "connectionKey", "sourceId", "targetId" }`), not the plain `"id1-id2"` strings stored in Redux.
 
 **Response 500 (unexpected server error):** `{ "status": "error", "message": "Internal server error", "reply_type": "error", "needs_clarification": false }` — the real exception is logged server-side only, never sent to the client. Agent-level failures (e.g. the language service being unavailable) return HTTP 200 with a fixed, safe `message`; exception details are never included.
 
@@ -313,7 +317,7 @@ The same fields as chat (`status`, `message`, `commands`, `results`, `reply_type
 
 **Response 400 (invalid `canvas_state`):**
 ```json
-{ "status": "error", "message": "Invalid canvas_state: send the same JSON object as the chat API's canvas_state.", "reply_type": "error", "needs_clarification": false }
+{ "status": "error", "message": "Invalid canvas_state: canvas_state.components[0].name - Input should be a valid string", "reply_type": "error", "needs_clarification": false }
 ```
 
 ### Real example: multi-component + relationship understanding
@@ -432,7 +436,7 @@ If it's not set correctly, the browser will block requests with a CORS error eve
 | Agent couldn't complete the request | 200 | `"error"` | `"error"` | `"Cannot disconnect ESP32 from Relay Module because they are not connected."` |
 | Disconnect without the canvas connection key | 200 | `"error"` | `"error"` | `"Cannot disconnect ESP32 from Relay Module because the connection cannot be identified: the current canvas connection key is unavailable."` |
 | Language service unavailable | 200 | `"error"` | `"error"` | `"The language service is unavailable right now. Please try again in a moment."` |
-| Bad request (missing/blank command, malformed JSON, invalid `canvas_state`) | 400 | `"error"` | `"error"` | `"Command is required"` |
+| Bad request (missing/blank command, malformed JSON, invalid `canvas_state`) | 400 | `"error"` | `"error"` | `"Command is required"`, `"Invalid request: canvas_state.components[0].name - Input should be a valid string"` |
 | Voice: transcription failed | 200 | `"error"` | `"error"` | `"Unable to transcribe audio"` |
 | Voice: speech recognized but not understood | 200 | `"error"` | `"error"` | `"Speech not understood"` |
 | Voice: component name unclear | 200 | `"error"` | `"error"` | `"Could not confidently identify component. Please repeat."` |
