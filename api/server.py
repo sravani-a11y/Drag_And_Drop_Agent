@@ -20,6 +20,7 @@ import threading
 from typing import Any, Optional
 
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -229,14 +230,18 @@ async def execute_voice_command(audio: UploadFile, canvas_state: Optional[str] =
             )
 
     audio_bytes = await audio.read()
-    transcript = transcribe_audio_bytes(audio_bytes)
+    # Speech-to-text, normalization and the workflow are blocking calls (HTTP
+    # to Groq, the LLM, the workflow lock): they run in the thread pool, as the
+    # sync chat endpoint does, so a slow voice request never stalls the event
+    # loop - /api/health and every other request keep being served meanwhile.
+    transcript = await run_in_threadpool(transcribe_audio_bytes, audio_bytes)
 
     if not transcript:
         logger.warning("[/api/agent/voice] transcription failed for upload %r", audio.filename)
         return _error_body("Unable to transcribe audio")
 
     try:
-        normalized_command = normalize_command(transcript)
+        normalized_command = await run_in_threadpool(normalize_command, transcript)
     except UnresolvedComponentError as exc:
         # A letters+digits token looked like an attempted technical
         # component code (e.g. "TH55") but nothing in the catalog was a
@@ -257,7 +262,7 @@ async def execute_voice_command(audio: UploadFile, canvas_state: Optional[str] =
         logger.warning("[/api/agent/voice] rejected a severely repetitive/corrupted transcript: %r", transcript)
         return {**_error_body("Speech not understood"), "transcript": transcript}
 
-    result = _run_with_canvas(normalized_command, canvas, "/api/agent/voice")
+    result = await run_in_threadpool(_run_with_canvas, normalized_command, canvas, "/api/agent/voice")
     response = _agent_response_from_workflow(result)
     response["transcript"] = transcript
     response["normalized_command"] = normalized_command

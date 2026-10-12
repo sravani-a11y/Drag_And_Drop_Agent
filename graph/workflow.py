@@ -33,10 +33,12 @@ orchestration and the retry/replan routing around them.
 import logging
 from typing import Any, Dict, List, Optional, TypedDict
 
+import httpx
 from langgraph.graph import END, START, StateGraph
 
 from bridge import clear_recorded_commands, get_recorded_commands
 from clarifier import is_social_message, resolve_unplanned
+from config import LLM_TIMEOUT_SECONDS
 from context import context_engine
 from knowledge_loader import KnowledgeLoader
 from llm import LLMResponseError, analyze
@@ -211,6 +213,15 @@ def intent_agent(state: WorkflowState) -> Dict[str, Any]:
         # the user gets a fixed message, never internals.
         logger.error("[Intent Agent] LLM response error: %s", exc)
         return {"knowledge": knowledge, "status": "failed", "error": "I couldn't understand that request. Please rephrase it."}
+    except httpx.TimeoutException:
+        # The LLM client's timeout (config.LLM_TIMEOUT_SECONDS) expired: fail
+        # this request cleanly instead of waiting - nothing was planned or sent.
+        logger.error("[Intent Agent] LLM request timed out after %s s", LLM_TIMEOUT_SECONDS)
+        return {
+            "knowledge": knowledge,
+            "status": "failed",
+            "error": "The language service took too long to respond. Please try again in a moment.",
+        }
     except Exception:
         logger.exception("[Intent Agent] unexpected error calling the LLM")
         return {
